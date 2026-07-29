@@ -1,0 +1,26 @@
+import type { TabsProps } from "@/types/items";
+
+export default function Tabs({ activeTab, onTabChange }: TabsProps) {
+  return (
+    <div className="tab-controls" role="tablist" aria-label="Lost and found categories">
+      <button
+        className={`tab-button ${activeTab === "lost" ? "active" : ""}`}
+        type="button"
+        role="tab"
+        aria-selected={activeTab === "lost"}
+        onClick={() => onTabChange("lost")}
+      >
+        Lost Items
+      </button>
+      <button
+        className={`tab-button ${activeTab === "found" ? "active" : ""}`}
+        type="button"
+        role="tab"
+        aria-selected={activeTab === "found"}
+        onClick={() => onTabChange("found")}
+      >
+        Found Items
+      </button>
+    </div>
+  );
+}

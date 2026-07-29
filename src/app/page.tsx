@@ -1,66 +1,131 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
 
-export default function Home() {
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import EmptyState from "@/components/EmptyState";
+import FilterBar from "@/components/FilterBar";
+import ItemCard from "@/components/ItemCard";
+import Pagination from "@/components/Pagination";
+import SearchBar from "@/components/SearchBar";
+import SkeletonList from "@/components/SkeletonList";
+import Tabs from "@/components/Tabs";
+import { mockItems, getMockFilterOptions } from "@/data/mockItems";
+import { useSearchAndFilter } from "@/hooks/useSearchAndFilter";
+import type { FilterValues } from "@/types/items";
+
+const ITEMS_PER_PAGE = 10;
+
+const initialFilters: FilterValues = {
+  category: "",
+  status: "",
+  building: "",
+  date: "",
+};
+
+export default function HomePage() {
+  const [activeTab, setActiveTab] = useState<"lost" | "found">("lost");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filters, setFilters] = useState<FilterValues>(initialFilters);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { categories, statuses, buildings } = getMockFilterOptions(mockItems);
+  const filteredItems = useSearchAndFilter(mockItems, {
+    activeTab,
+    searchQuery,
+    filters,
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
+  const currentPageItems = filteredItems.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE,
+  );
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(1);
+    }
+  }, [currentPage, totalPages]);
+
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = window.setTimeout(() => setIsLoading(false), 220);
+
+    return () => window.clearTimeout(timer);
+  }, [activeTab, searchQuery, filters, currentPage]);
+
+  const handleTabChange = (tab: "lost" | "found") => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+  };
+
+  const handleFilterChange = (name: keyof FilterValues, value: string) => {
+    setFilters((previousFilters) => ({
+      ...previousFilters,
+      [name]: value,
+    }));
+    setCurrentPage(1);
+  };
+
+  const handleClearFilters = () => {
+    setFilters(initialFilters);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(Math.max(1, page));
+  };
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <section>
+      <section className="top-panel">
+        <SearchBar value={searchQuery} onSearchChange={handleSearchChange} />
+        <div className="report-section">
+          <Link href="/report/lost" className="report-button">
+            + Report Lost Item
+          </Link>
         </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+      </section>
+
+      <FilterBar
+        filters={filters}
+        categories={categories}
+        statuses={statuses}
+        buildings={buildings}
+        onFilterChange={handleFilterChange}
+        onClearFilters={handleClearFilters}
+      />
+
+      <section className="content-panel">
+        <Tabs activeTab={activeTab} onTabChange={handleTabChange} />
+        <div className="tab-content" aria-live="polite">
+          {isLoading ? (
+            <SkeletonList />
+          ) : currentPageItems.length === 0 ? (
+            <EmptyState
+              title={searchQuery ? "No items found" : activeTab === "lost" ? "No lost items reported yet" : "No found items available"}
+              message={
+                searchQuery
+                  ? "We couldn't find any items matching your search. Try different keywords or adjust your filters."
+                  : activeTab === "lost"
+                    ? "There are currently no lost item reports available."
+                    : "No found items have been submitted yet."
+              }
+              actionText="Clear filters"
+              actionCallback={handleClearFilters}
             />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          ) : (
+            currentPageItems.map((item) => <ItemCard key={item.id} item={item} />)
+          )}
         </div>
-      </main>
-    </div>
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+      </section>
+    </section>
   );
 }
