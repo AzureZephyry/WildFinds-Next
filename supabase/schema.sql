@@ -3,6 +3,42 @@
 
 create extension if not exists pgcrypto;
 
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  full_name text,
+  email text not null,
+  role text not null default 'user' check (role in ('owner', 'admin', 'moderator', 'user')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, full_name, email, role)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data ->> 'full_name', null),
+    new.email,
+    'user'
+  )
+  on conflict (id) do nothing;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+
+create trigger on_auth_user_created
+after insert on auth.users
+for each row
+execute function public.handle_new_user();
+
 create table if not exists public.items (
   id uuid primary key default gen_random_uuid(),
   reference_number text not null unique,
@@ -108,11 +144,19 @@ $$ language plpgsql;
 
 drop trigger if exists update_items_updated_at on public.items;
 
+drop trigger if exists update_profiles_updated_at on public.profiles;
+
 create trigger update_items_updated_at
 before update on public.items
 for each row
 execute function public.update_updated_at_column();
 
+create trigger update_profiles_updated_at
+before update on public.profiles
+for each row
+execute function public.update_updated_at_column();
+
+alter table public.profiles enable row level security;
 alter table public.items enable row level security;
 alter table public.reports enable row level security;
 alter table public.claims enable row level security;
@@ -126,6 +170,8 @@ drop policy if exists "Allow public read access to claims" on public.claims;
 drop policy if exists "Allow public insert access to claims" on public.claims;
 drop policy if exists "Allow public read access to matches" on public.matches;
 drop policy if exists "Allow public insert access to matches" on public.matches;
+drop policy if exists "Users can read own profile" on public.profiles;
+drop policy if exists "Users can update own profile" on public.profiles;
 
 create policy "Allow public read access to visible items" on public.items
 for select
@@ -134,6 +180,17 @@ using (status = 'submitted' or status = 'active' or status = 'matched');
 create policy "Allow public insert access to items" on public.items
 for insert
 with check (status = 'submitted');
+
+create policy "Users can read own profile" on public.profiles
+for select
+to authenticated
+using (auth.uid() = id);
+
+create policy "Users can update own profile" on public.profiles
+for update
+to authenticated
+using (auth.uid() = id)
+with check (auth.uid() = id);
 
 create policy "Allow public insert access to reports" on public.reports
 for insert
