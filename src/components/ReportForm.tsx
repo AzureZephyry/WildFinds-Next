@@ -9,7 +9,6 @@ import { getItemCategories } from '../utils/reportUtils';
 import { validateReport } from '../utils/validation';
 import type { ReportFormErrors, ReportFormProps, ReportFormValues, ReportSubmissionPayload } from '../types/reports';
 import { getSupabaseClient } from '../lib/supabase/client';
-import { generateReferenceNumber } from '../utils/referenceGenerator';
 
 const INITIAL_STATE: ReportFormValues = {
   itemName: '',
@@ -100,18 +99,6 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
         throw new Error('Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
       }
 
-      const { data: existingItems, error: existingItemsError } = await client.from('items').select('reference_number');
-
-      if (existingItemsError) {
-        const existingItemsMessage = getSupabaseErrorMessage(existingItemsError, 'Unable to load existing reference numbers.');
-        console.error('[WildFinds] Supabase reference lookup failed', existingItemsError);
-        throw new Error(`Unable to load existing reference numbers: ${existingItemsMessage}`);
-      }
-
-      const existingReferences = (existingItems ?? [])
-        .map((item) => (typeof item?.reference_number === 'string' ? item.reference_number : null))
-        .filter((value): value is string => Boolean(value && value.trim().length > 0));
-
       let imageUrl: string | null = null;
 
       if (values.imageFile) {
@@ -131,10 +118,27 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
         imageUrl = publicUrlData.publicUrl || null;
       }
 
-      let referenceNumber = generateReferenceNumber(reportType, values.dateReported, existingReferences);
+      let referenceNumber: string | null = null;
       let itemId: string | null = null;
 
       for (let attempt = 0; attempt < 3; attempt += 1) {
+        const { data: generatedReference, error: referenceError } = await client.rpc('generate_reference_number', {
+          report_type: reportType,
+          report_date: values.dateReported,
+        });
+
+        if (referenceError) {
+          const referenceMessage = getSupabaseErrorMessage(referenceError, 'Unable to generate reference number.');
+          console.error('[WildFinds] Supabase reference generation failed', referenceError);
+          throw new Error(`Unable to generate reference number: ${referenceMessage}`);
+        }
+
+        if (typeof generatedReference !== 'string' || generatedReference.trim().length === 0) {
+          throw new Error('Unable to generate reference number: the database returned an empty value.');
+        }
+
+        referenceNumber = generatedReference;
+
         const { error: itemInsertError } = await client.from('items').insert({
           reference_number: referenceNumber,
           type: reportType,
@@ -155,19 +159,6 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
         if (itemInsertError) {
           const itemErrorMessage = getSupabaseErrorMessage(itemInsertError, 'Unable to create item record.');
           if (itemInsertError.code === '23505' && itemInsertError.message.includes('reference_number')) {
-            const { data: refreshedItems, error: refreshedItemsError } = await client.from('items').select('reference_number');
-
-            if (refreshedItemsError) {
-              const refreshedItemsMessage = getSupabaseErrorMessage(refreshedItemsError, 'Unable to refresh reference numbers.');
-              console.error('[WildFinds] Supabase reference refresh failed', refreshedItemsError);
-              throw new Error(`Unable to refresh reference numbers: ${refreshedItemsMessage}`);
-            }
-
-            const refreshedReferences = (refreshedItems ?? [])
-              .map((item) => (typeof item?.reference_number === 'string' ? item.reference_number : null))
-              .filter((value): value is string => Boolean(value && value.trim().length > 0));
-
-            referenceNumber = generateReferenceNumber(reportType, values.dateReported, refreshedReferences);
             continue;
           }
 
@@ -202,7 +193,7 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
         break;
       }
 
-      if (!itemId) {
+      if (!referenceNumber || !itemId) {
         throw new Error('Unable to create item record.');
       }
 

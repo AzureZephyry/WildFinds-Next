@@ -1,5 +1,3 @@
-import { mockItems } from '../data/mockItems';
-import { generateReferenceNumber as generateSessionReferenceNumber } from './referenceGenerator';
 import type { ReportSubmissionPayload } from '../types/reports';
 
 const ITEM_CATEGORIES = [
@@ -23,11 +21,10 @@ export function generateItemId(reportType: 'lost' | 'found') {
 
 export function createReportSubmission(reportType: 'lost' | 'found', values: Record<string, unknown>): ReportSubmissionPayload {
   const itemType = reportType === 'found' ? 'Found' : 'Lost';
-  const existingReferenceNumbers = mockItems.map((item) => item.referenceNumber || '');
 
   return {
     id: generateItemId(reportType),
-    referenceNumber: generateSessionReferenceNumber(reportType, String(values.dateReported), existingReferenceNumbers),
+    referenceNumber: String(values.referenceNumber || ''),
     name: String(values.itemName),
     category: String(values.category),
     location: String(values.location),

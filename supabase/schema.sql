@@ -54,6 +54,49 @@ create table if not exists public.matches (
   constraint matches_lost_found_different check (lost_item_id <> found_item_id)
 );
 
+create or replace function public.generate_reference_number(report_type text, report_date date)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  normalized_type text;
+  prefix text;
+  date_part text;
+  pattern text;
+  next_number integer;
+begin
+  if report_date is null then
+    raise exception 'Report date is required' using errcode = '22023';
+  end if;
+
+  normalized_type := lower(btrim(coalesce(report_type, '')));
+
+  if normalized_type = 'lost' then
+    prefix := 'L';
+  elsif normalized_type = 'found' then
+    prefix := 'F';
+  else
+    raise exception 'Invalid report type: %', report_type using errcode = '22023';
+  end if;
+
+  date_part := to_char(report_date, 'YYYYMMDD');
+  pattern := prefix || date_part || '-%';
+
+  perform pg_advisory_xact_lock(hashtext('wildfinds:' || normalized_type || ':' || date_part));
+
+  select coalesce(max(cast(substring(reference_number from '[0-9]+$') as integer)), 0) + 1
+  into next_number
+  from public.items
+  where reference_number like pattern;
+
+  return prefix || date_part || '-' || next_number;
+end;
+$$;
+
+grant execute on function public.generate_reference_number(text, date) to anon, authenticated;
+
 create or replace function public.update_updated_at_column()
 returns trigger as $$
 begin
