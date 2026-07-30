@@ -100,6 +100,18 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
         throw new Error('Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
       }
 
+      const { data: existingItems, error: existingItemsError } = await client.from('items').select('reference_number');
+
+      if (existingItemsError) {
+        const existingItemsMessage = getSupabaseErrorMessage(existingItemsError, 'Unable to load existing reference numbers.');
+        console.error('[WildFinds] Supabase reference lookup failed', existingItemsError);
+        throw new Error(`Unable to load existing reference numbers: ${existingItemsMessage}`);
+      }
+
+      const existingReferences = (existingItems ?? [])
+        .map((item) => (typeof item?.reference_number === 'string' ? item.reference_number : null))
+        .filter((value): value is string => Boolean(value && value.trim().length > 0));
+
       let imageUrl: string | null = null;
 
       if (values.imageFile) {
@@ -119,7 +131,7 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
         imageUrl = publicUrlData.publicUrl || null;
       }
 
-      let referenceNumber = generateReferenceNumber(reportType, values.dateReported, []);
+      let referenceNumber = generateReferenceNumber(reportType, values.dateReported, existingReferences);
       let itemId: string | null = null;
 
       for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -143,7 +155,19 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
         if (itemInsertError) {
           const itemErrorMessage = getSupabaseErrorMessage(itemInsertError, 'Unable to create item record.');
           if (itemInsertError.code === '23505' && itemInsertError.message.includes('reference_number')) {
-            referenceNumber = generateReferenceNumber(reportType, values.dateReported, [referenceNumber]);
+            const { data: refreshedItems, error: refreshedItemsError } = await client.from('items').select('reference_number');
+
+            if (refreshedItemsError) {
+              const refreshedItemsMessage = getSupabaseErrorMessage(refreshedItemsError, 'Unable to refresh reference numbers.');
+              console.error('[WildFinds] Supabase reference refresh failed', refreshedItemsError);
+              throw new Error(`Unable to refresh reference numbers: ${refreshedItemsMessage}`);
+            }
+
+            const refreshedReferences = (refreshedItems ?? [])
+              .map((item) => (typeof item?.reference_number === 'string' ? item.reference_number : null))
+              .filter((value): value is string => Boolean(value && value.trim().length > 0));
+
+            referenceNumber = generateReferenceNumber(reportType, values.dateReported, refreshedReferences);
             continue;
           }
 
