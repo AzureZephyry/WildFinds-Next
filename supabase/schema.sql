@@ -20,7 +20,8 @@ create table if not exists public.items (
   image_url text,
   status text not null default 'submitted' check (status in ('submitted', 'active', 'matched', 'claimed', 'closed')),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  resolved_at timestamptz
 );
 
 create table if not exists public.reports (
@@ -128,7 +129,7 @@ drop policy if exists "Allow public insert access to matches" on public.matches;
 
 create policy "Allow public read access to visible items" on public.items
 for select
-using (status = 'active' or status = 'matched' or status = 'claimed');
+using (status = 'submitted' or status = 'active' or status = 'matched');
 
 create policy "Allow public insert access to items" on public.items
 for insert
