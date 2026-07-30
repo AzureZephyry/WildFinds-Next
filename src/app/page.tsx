@@ -9,7 +9,7 @@ import Pagination from "@/components/Pagination";
 import SearchBar from "@/components/SearchBar";
 import SkeletonList from "@/components/SkeletonList";
 import Tabs from "@/components/Tabs";
-import { mockItems, getMockFilterOptions } from "@/data/mockItems";
+import { useItems } from "@/hooks/useItems";
 import { useSearchAndFilter } from "@/hooks/useSearchAndFilter";
 import type { FilterValues } from "@/types/items";
 
@@ -28,9 +28,12 @@ export default function HomePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<FilterValues>(initialFilters);
   const [isLoading, setIsLoading] = useState(false);
+  const { items, isLoading: isItemsLoading, error } = useItems();
 
-  const { categories, statuses, buildings } = getMockFilterOptions(mockItems);
-  const filteredItems = useSearchAndFilter(mockItems, {
+  const categories = Array.from(new Set(items.map((item) => item.category).filter((value): value is string => Boolean(value)))).sort();
+  const statuses = Array.from(new Set(items.map((item) => item.status).filter((value): value is string => Boolean(value)))).sort();
+  const buildings = Array.from(new Set(items.map((item) => item.building).filter((value): value is string => Boolean(value)))).sort();
+  const filteredItems = useSearchAndFilter(items, {
     activeTab,
     searchQuery,
     filters,
@@ -53,7 +56,7 @@ export default function HomePage() {
     const timer = window.setTimeout(() => setIsLoading(false), 220);
 
     return () => window.clearTimeout(timer);
-  }, [activeTab, searchQuery, filters, currentPage]);
+  }, [activeTab, searchQuery, filters, currentPage, items]);
 
   const handleTabChange = (tab: "lost" | "found") => {
     setActiveTab(tab);
@@ -105,8 +108,15 @@ export default function HomePage() {
       <section className="content-panel">
         <Tabs activeTab={activeTab} onTabChange={handleTabChange} />
         <div className="tab-content" aria-live="polite">
-          {isLoading ? (
+          {isLoading || isItemsLoading ? (
             <SkeletonList />
+          ) : error ? (
+            <EmptyState
+              title="Unable to load reports"
+              message={error}
+              actionText="Try again"
+              actionCallback={() => window.location.reload()}
+            />
           ) : currentPageItems.length === 0 ? (
             <EmptyState
               title={searchQuery ? "No items found" : activeTab === "lost" ? "No lost items reported yet" : "No found items available"}
