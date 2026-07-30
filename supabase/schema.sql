@@ -162,7 +162,7 @@ alter table public.reports enable row level security;
 alter table public.claims enable row level security;
 alter table public.matches enable row level security;
 
-drop policy if exists "Allow public read access to items" on public.items;
+drop policy if exists "Allow public read access to visible items" on public.items;
 drop policy if exists "Allow public insert access to items" on public.items;
 drop policy if exists "Allow public read access to reports" on public.reports;
 drop policy if exists "Allow public insert access to reports" on public.reports;
