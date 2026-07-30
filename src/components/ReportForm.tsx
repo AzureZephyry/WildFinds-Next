@@ -29,6 +29,28 @@ const INITIAL_STATE: ReportFormValues = {
   imagePreviewUrl: '',
 };
 
+function getSupabaseErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error !== 'object' || error === null) {
+    return fallback;
+  }
+
+  const maybeError = error as {
+    message?: unknown;
+    details?: unknown;
+    hint?: unknown;
+    code?: unknown;
+  };
+
+  const parts = [
+    typeof maybeError.message === 'string' ? maybeError.message : undefined,
+    typeof maybeError.details === 'string' ? maybeError.details : undefined,
+    typeof maybeError.hint === 'string' ? maybeError.hint : undefined,
+    typeof maybeError.code === 'string' ? `code: ${maybeError.code}` : undefined,
+  ].filter((value): value is string => Boolean(value && value.trim().length > 0));
+
+  return parts.length > 0 ? parts.join(' · ') : fallback;
+}
+
 export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
   const [values, setValues] = useState<ReportFormValues>(INITIAL_STATE);
   const [errors, setErrors] = useState<ReportFormErrors>({});
@@ -88,7 +110,9 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
         });
 
         if (uploadError) {
-          throw new Error(uploadError.message || 'Image upload failed.');
+          const uploadMessage = getSupabaseErrorMessage(uploadError, 'Image upload failed.');
+          console.error('[WildFinds] Supabase storage upload failed', uploadError);
+          throw new Error(`Image upload failed: ${uploadMessage}`);
         }
 
         const { data: publicUrlData } = client.storage.from('item-images').getPublicUrl(safeFileName);
@@ -97,46 +121,65 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
 
       let referenceNumber = generateReferenceNumber(reportType, values.dateReported, []);
       let itemId: string | null = null;
-      let itemError: Error | null = null;
 
       for (let attempt = 0; attempt < 3; attempt += 1) {
-        const { data, error } = await client
+        const { error: itemInsertError } = await client.from('items').insert({
+          reference_number: referenceNumber,
+          type: reportType,
+          name: values.itemName,
+          category: values.category,
+          description: values.description || null,
+          brand: values.brand,
+          color: values.color,
+          identifying_marks: values.identifyingMarks || null,
+          building: values.building,
+          location: values.location,
+          date_reported: values.dateReported,
+          time_reported: values.timeReported,
+          image_url: imageUrl,
+          status: 'submitted',
+        });
+
+        if (itemInsertError) {
+          const itemErrorMessage = getSupabaseErrorMessage(itemInsertError, 'Unable to create item record.');
+          if (itemInsertError.code === '23505' && itemInsertError.message.includes('reference_number')) {
+            referenceNumber = generateReferenceNumber(reportType, values.dateReported, [referenceNumber]);
+            continue;
+          }
+
+          console.error('[WildFinds] Supabase item insert failed', {
+            error: itemInsertError,
+            referenceNumber,
+            reportType,
+            imageUrl,
+          });
+          throw new Error(`Unable to create item record: ${itemErrorMessage}`);
+        }
+
+        const { data: insertedItem, error: itemFetchError } = await client
           .from('items')
-          .insert({
-            reference_number: referenceNumber,
-            type: reportType,
-            name: values.itemName,
-            category: values.category,
-            description: values.description || null,
-            brand: values.brand,
-            color: values.color,
-            identifying_marks: values.identifyingMarks || null,
-            building: values.building,
-            location: values.location,
-            date_reported: values.dateReported,
-            time_reported: values.timeReported,
-            image_url: imageUrl,
-            status: 'submitted',
-          })
           .select('id')
-          .single<{ id: string }>();
+          .eq('reference_number', referenceNumber)
+          .maybeSingle<{ id: string }>();
 
-        if (!error && data) {
-          itemId = data.id;
-          break;
+        if (itemFetchError) {
+          console.error('[WildFinds] Supabase item fetch after insert failed', {
+            error: itemFetchError,
+            referenceNumber,
+          });
+          throw new Error(`Unable to load the created item: ${getSupabaseErrorMessage(itemFetchError, 'Unknown item fetch error.')}`);
         }
 
-        if (error?.code === '23505' && error.message.includes('reference_number')) {
-          referenceNumber = generateReferenceNumber(reportType, values.dateReported, [referenceNumber]);
-          continue;
+        if (!insertedItem?.id) {
+          throw new Error(`Unable to load the created item for reference ${referenceNumber}.`);
         }
 
-        itemError = new Error(error?.message || 'Unable to create item record.');
+        itemId = insertedItem.id;
         break;
       }
 
       if (!itemId) {
-        throw itemError || new Error('Unable to create item record.');
+        throw new Error('Unable to create item record.');
       }
 
       const { error: reportError } = await client.from('reports').insert({
@@ -147,7 +190,9 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
       });
 
       if (reportError) {
-        throw new Error(reportError.message || 'Unable to save report.');
+        const reportMessage = getSupabaseErrorMessage(reportError, 'Unable to save report.');
+        console.error('[WildFinds] Supabase report insert failed', reportError);
+        throw new Error(`Unable to save report: ${reportMessage}`);
       }
 
       const payload: ReportSubmissionPayload = {
