@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import FormField from './FormField';
 import ImageUploader from './ImageUploader';
 import ValidationMessage from './ValidationMessage';
@@ -8,7 +9,8 @@ import { BUILDING_OPTIONS } from '../data/buildingOptions';
 import { getItemCategories } from '../utils/reportUtils';
 import { validateReport } from '../utils/validation';
 import type { ReportFormErrors, ReportFormProps, ReportFormValues, ReportSubmissionPayload } from '../types/reports';
-import { getSupabaseClient } from '../lib/supabase/client';
+import { supabase } from '../lib/supabase/client';
+import { getCurrentProfileId } from '../lib/supabase/auth';
 
 const INITIAL_STATE: ReportFormValues = {
   itemName: '',
@@ -51,15 +53,45 @@ function getSupabaseErrorMessage(error: unknown, fallback: string): string {
 }
 
 export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
+  const router = useRouter();
   const [values, setValues] = useState<ReportFormValues>(INITIAL_STATE);
   const [errors, setErrors] = useState<ReportFormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [lastSubmitTime, setLastSubmitTime] = useState(0);
 
   const setField = (name: keyof ReportFormValues, value: string | File | null) => {
     setValues((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: undefined }));
   };
+
+  useEffect(() => {
+    let active = true;
+
+    const verifyAccess = async () => {
+      const profileId = await getCurrentProfileId();
+
+      if (!active) {
+        return;
+      }
+
+      if (!profileId) {
+        setAuthMessage('Please log in to submit a report.');
+        router.replace(`/login?redirect=/report/${reportType}`);
+        return;
+      }
+
+      setAuthMessage(null);
+      setIsAuthReady(true);
+    };
+
+    void verifyAccess();
+
+    return () => {
+      active = false;
+    };
+  }, [reportType, router]);
 
   const handleImageChange = (file: File | null) => {
     setField('imageFile', file);
@@ -89,11 +121,16 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
       return;
     }
 
+    if (!isAuthReady) {
+      setErrors((prev) => ({ ...prev, form: 'Please wait while we verify your account.' }));
+      return;
+    }
+
     setIsSubmitting(true);
     setErrors((prev) => ({ ...prev, form: undefined }));
 
     try {
-      const client = getSupabaseClient();
+      const client = supabase;
 
       if (!client) {
         throw new Error('Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
@@ -116,6 +153,14 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
 
         const { data: publicUrlData } = client.storage.from('item-images').getPublicUrl(safeFileName);
         imageUrl = publicUrlData.publicUrl || null;
+      }
+
+      const profileId = await getCurrentProfileId();
+
+      if (!profileId) {
+        setAuthMessage('Your account profile could not be found. Please sign in again and try submitting the report.');
+        router.replace(`/login?redirect=/report/${reportType}`);
+        throw new Error('Your account profile could not be found. Please sign in again and try submitting the report.');
       }
 
       let referenceNumber: string | null = null;
@@ -199,6 +244,7 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
 
       const { error: reportError } = await client.from('reports').insert({
         item_id: itemId,
+        profile_id: profileId,
         reporter_name: values.reporterName,
         email: values.email,
         contact_number: values.contactNumber,
@@ -245,6 +291,7 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
 
   return (
     <form className="report-form" onSubmit={handleSubmit}>
+      {authMessage ? <p className="validation-message">{authMessage}</p> : null}
       <div className="form-grid">
         <FormField label="Item name" htmlFor="itemName">
           <input
@@ -423,7 +470,7 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
 
       <div className="form-actions">
         {errors.form ? <p className="validation-message">{errors.form}</p> : null}
-        <button type="submit" className="primary-button" disabled={isSubmitting}>
+        <button type="submit" className="primary-button" disabled={isSubmitting || !isAuthReady}>
           Submit Report
         </button>
       </div>

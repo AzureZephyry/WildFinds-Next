@@ -63,12 +63,15 @@ create table if not exists public.items (
 create table if not exists public.reports (
   id uuid primary key default gen_random_uuid(),
   item_id uuid not null references public.items (id) on delete cascade,
+  profile_id uuid references public.profiles (id) on delete set null,
   reporter_name text not null,
   email text not null,
   contact_number text not null,
   submitted_at timestamptz not null default now(),
   review_status text not null default 'pending' check (review_status in ('pending', 'approved', 'rejected'))
 );
+
+create index if not exists idx_reports_profile_id on public.reports (profile_id);
 
 create table if not exists public.claims (
   id uuid primary key default gen_random_uuid(),
@@ -166,6 +169,11 @@ drop policy if exists "Allow public read access to visible items" on public.item
 drop policy if exists "Allow public insert access to items" on public.items;
 drop policy if exists "Allow public read access to reports" on public.reports;
 drop policy if exists "Allow public insert access to reports" on public.reports;
+drop policy if exists "Authenticated users can insert reports" on public.reports;
+drop policy if exists "Authenticated users can read own reports" on public.reports;
+drop policy if exists "Authenticated users can update own reports" on public.reports;
+drop policy if exists "Authenticated users can delete own unresolved reports" on public.reports;
+drop policy if exists "Moderators and admins can access all reports" on public.reports;
 drop policy if exists "Allow public read access to claims" on public.claims;
 drop policy if exists "Allow public insert access to claims" on public.claims;
 drop policy if exists "Allow public read access to matches" on public.matches;
@@ -177,8 +185,9 @@ create policy "Allow public read access to visible items" on public.items
 for select
 using (status = 'submitted' or status = 'active' or status = 'matched');
 
-create policy "Allow public insert access to items" on public.items
+create policy "Authenticated users can insert items" on public.items
 for insert
+to authenticated
 with check (status = 'submitted');
 
 create policy "Users can read own profile" on public.profiles
@@ -192,9 +201,59 @@ to authenticated
 using (auth.uid() = id)
 with check (auth.uid() = id);
 
-create policy "Allow public insert access to reports" on public.reports
+create policy "Authenticated users can insert reports" on public.reports
 for insert
-with check (true);
+to authenticated
+with check (
+  profile_id is not null and
+  profile_id = (select id from public.profiles where id = auth.uid())
+);
+
+create policy "Authenticated users can read own reports" on public.reports
+for select
+to authenticated
+using (
+  profile_id is not null and
+  profile_id = (select id from public.profiles where id = auth.uid())
+);
+
+create policy "Authenticated users can update own reports" on public.reports
+for update
+to authenticated
+using (
+  profile_id is not null and
+  profile_id = (select id from public.profiles where id = auth.uid())
+)
+with check (
+  profile_id is not null and
+  profile_id = (select id from public.profiles where id = auth.uid())
+);
+
+create policy "Authenticated users can delete own unresolved reports" on public.reports
+for delete
+to authenticated
+using (
+  profile_id is not null and
+  profile_id = (select id from public.profiles where id = auth.uid()) and
+  exists (
+    select 1
+    from public.items i
+    where i.id = item_id
+      and i.status in ('submitted', 'active')
+  )
+);
+
+create policy "Moderators and admins can access all reports" on public.reports
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.profiles p
+    where p.id = auth.uid()
+      and p.role in ('moderator', 'admin', 'owner')
+  )
+);
 
 create policy "Allow public insert access to claims" on public.claims
 for insert
