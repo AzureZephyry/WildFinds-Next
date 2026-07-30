@@ -3,6 +3,7 @@ import type { DrawerProps } from "@/types/layout";
 
 const navigationItems = [
   { href: "/", label: "Home" },
+  { href: "/history", label: "History" },
   { href: "/about#about", label: "About WildFinds" },
   { href: "/about#how-it-works", label: "How It Works" },
   { href: "/about#team", label: "Developers / Team" },
