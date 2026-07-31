@@ -78,7 +78,7 @@ export function useItems(): UseItemsResult {
             message: queryError.message,
             details: queryError.details,
             hint: queryError.hint,
-            error: queryError,
+            fullError: queryError,
           });
           throw queryError;
         }
