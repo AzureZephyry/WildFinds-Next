@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useAuth } from "@/components/AuthProvider";
 import type { DrawerProps } from "@/types/layout";
 
 const navigationItems = [
@@ -10,6 +11,8 @@ const navigationItems = [
 ];
 
 export default function Drawer({ isOpen, onClose }: DrawerProps) {
+  const { session, isLoading } = useAuth();
+
   return (
     <>
       <div
@@ -34,6 +37,13 @@ export default function Drawer({ isOpen, onClose }: DrawerProps) {
             </button>
           </div>
           <ul className="drawer-list">
+            {!isLoading && session ? (
+              <li>
+                <Link href="/my-reports" onClick={onClose}>
+                  My Reports
+                </Link>
+              </li>
+            ) : null}
             {navigationItems.map((item) => (
               <li key={item.href}>
                 <Link href={item.href} onClick={onClose}>
