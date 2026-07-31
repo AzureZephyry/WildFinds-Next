@@ -88,11 +88,22 @@ export function useMyReports(sessionUserId: string | undefined, isAuthLoading: b
           throw new Error("Your account profile could not be found.");
         }
 
+        console.log("[WildFinds] My Reports profile", {
+          sessionUserId,
+          profileId,
+        });
+
         const { data: reportData, error: reportError } = await client
           .from("reports")
           .select("id, item_id, review_status, submitted_at")
           .eq("profile_id", profileId)
           .order("submitted_at", { ascending: false });
+
+        console.log("[WildFinds] My Reports report query", {
+          count: reportData?.length ?? 0,
+          rows: reportData,
+          error: reportError,
+        });
 
         if (reportError) {
           throw reportError;
@@ -100,6 +111,8 @@ export function useMyReports(sessionUserId: string | undefined, isAuthLoading: b
 
         const reportRecords = (reportData ?? []) as ReportRecord[];
         const itemIds = reportRecords.map((report) => report.item_id);
+
+        console.log("[WildFinds] My Reports item IDs", itemIds);
 
         if (itemIds.length === 0) {
           if (isMounted) {
@@ -113,6 +126,12 @@ export function useMyReports(sessionUserId: string | undefined, isAuthLoading: b
           .select("id, reference_number, type, name, category, building, location, date_reported, image_url, status")
           .in("id", itemIds);
 
+        console.log("[WildFinds] My Reports item query", {
+          count: itemData?.length ?? 0,
+          rows: itemData,
+          error: itemError,
+        });
+
         if (itemError) {
           throw itemError;
         }
@@ -122,6 +141,11 @@ export function useMyReports(sessionUserId: string | undefined, isAuthLoading: b
         const mappedReports = reportRecords.flatMap((report) => {
           const item = itemsById.get(report.item_id);
           return item ? [mapReport(report, item)] : [];
+        });
+
+        console.log("[WildFinds] My Reports mapped result", {
+          count: mappedReports.length,
+          rows: mappedReports,
         });
 
         if (isMounted) {

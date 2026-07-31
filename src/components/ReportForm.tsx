@@ -278,6 +278,12 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
       }
 
       step = 'report-insert';
+      console.log('[WildFinds] Report ownership insert', {
+        itemId,
+        profileId,
+        sessionUserId: currentSession.user.id,
+      });
+
       const { error: reportError } = await client.from('reports').insert({
         item_id: itemId,
         profile_id: profileId,
