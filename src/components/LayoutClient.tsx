@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import AuthProvider from "@/components/AuthProvider";
 import Drawer from "@/components/Drawer";
 import Header from "@/components/Header";
 
@@ -24,10 +25,12 @@ export default function LayoutClient({ children }: { children: React.ReactNode }
   }, [isDrawerOpen]);
 
   return (
-    <div>
-      <Header onMenuToggle={toggleDrawer} isDrawerOpen={isDrawerOpen} />
-      <Drawer isOpen={isDrawerOpen} onClose={closeDrawer} />
-      <main className="page-layout">{children}</main>
-    </div>
+    <AuthProvider>
+      <div>
+        <Header onMenuToggle={toggleDrawer} isDrawerOpen={isDrawerOpen} />
+        <Drawer isOpen={isDrawerOpen} onClose={closeDrawer} />
+        <main className="page-layout">{children}</main>
+      </div>
+    </AuthProvider>
   );
 }

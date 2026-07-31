@@ -1,60 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { HeaderProps } from "@/types/layout";
-import { supabase } from "@/lib/supabase/client";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function Header({ onMenuToggle, isDrawerOpen }: HeaderProps) {
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const client = supabase;
-
-    if (!client) {
-      setIsLoading(false);
-      return;
-    }
-
-    let active = true;
-
-    const syncSession = async () => {
-      const {
-        data: { session },
-      } = await client.auth.getSession();
-
-      if (!active) {
-        return;
-      }
-
-      setUserEmail(session?.user?.email ?? null);
-      setIsLoading(false);
-    };
-
-    void syncSession();
-
-    const { data: authListener } = client.auth.onAuthStateChange((_event, session) => {
-      if (!active) {
-        return;
-      }
-
-      setUserEmail(session?.user?.email ?? null);
-      setIsLoading(false);
-    });
-
-    return () => {
-      active = false;
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
+  const router = useRouter();
+  const { session, isLoading, signOut } = useAuth();
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const userEmail = session?.user?.email ?? null;
 
   const handleLogout = async () => {
-    if (!supabase) {
+    setLogoutError(null);
+
+    const { error } = await signOut();
+
+    if (error) {
+      console.error("[WildFinds] Logout failed", error);
+      setLogoutError(error.message || "Unable to log out. Please try again.");
       return;
     }
 
-    await supabase.auth.signOut();
+    router.replace("/");
+    router.refresh();
   };
 
   return (
@@ -99,6 +69,7 @@ export default function Header({ onMenuToggle, isDrawerOpen }: HeaderProps) {
               </Link>
             </div>
           )}
+          {logoutError ? <p className="validation-message">{logoutError}</p> : null}
         </div>
 
         <div className="site-header__subtitle">

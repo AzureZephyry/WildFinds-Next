@@ -11,6 +11,7 @@ import { validateReport } from '../utils/validation';
 import type { ReportFormErrors, ReportFormProps, ReportFormValues, ReportSubmissionPayload } from '../types/reports';
 import { supabase } from '../lib/supabase/client';
 import { getCurrentProfileId } from '../lib/supabase/auth';
+import { useAuth } from '@/components/AuthProvider';
 
 const INITIAL_STATE: ReportFormValues = {
   itemName: '',
@@ -52,12 +53,38 @@ function getSupabaseErrorMessage(error: unknown, fallback: string): string {
   return parts.length > 0 ? parts.join(' · ') : fallback;
 }
 
+type SubmissionStep =
+  | 'auth-session'
+  | 'profile-lookup'
+  | 'image-upload'
+  | 'reference-generation'
+  | 'item-insert'
+  | 'item-fetch'
+  | 'report-insert'
+  | 'unexpected';
+
+function logSubmissionError(step: SubmissionStep, error: unknown) {
+  const maybeError = typeof error === 'object' && error !== null
+    ? error as { code?: unknown; message?: unknown; details?: unknown; hint?: unknown; status?: unknown }
+    : {};
+
+  console.error('[WildFinds] Report submission failed', {
+    step,
+    code: maybeError.code,
+    message: maybeError.message,
+    details: maybeError.details,
+    hint: maybeError.hint,
+    status: maybeError.status,
+    fullError: error,
+  });
+}
+
 export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
   const router = useRouter();
+  const { session, isLoading: isAuthLoading } = useAuth();
   const [values, setValues] = useState<ReportFormValues>(INITIAL_STATE);
   const [errors, setErrors] = useState<ReportFormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAuthReady, setIsAuthReady] = useState(false);
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [lastSubmitTime, setLastSubmitTime] = useState(0);
 
@@ -67,31 +94,22 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
   };
 
   useEffect(() => {
-    let active = true;
+    if (isAuthLoading) {
+      return;
+    }
 
-    const verifyAccess = async () => {
-      const profileId = await getCurrentProfileId();
-
-      if (!active) {
-        return;
-      }
-
-      if (!profileId) {
+    if (!session) {
+      const timer = window.setTimeout(() => {
+        setValues(INITIAL_STATE);
+        setErrors({});
+        setIsSubmitting(false);
         setAuthMessage('Please log in to submit a report.');
-        router.replace(`/login?redirect=/report/${reportType}`);
-        return;
-      }
+      }, 0);
+      router.replace(`/login?redirect=/report/${reportType}`);
 
-      setAuthMessage(null);
-      setIsAuthReady(true);
-    };
-
-    void verifyAccess();
-
-    return () => {
-      active = false;
-    };
-  }, [reportType, router]);
+      return () => window.clearTimeout(timer);
+    }
+  }, [isAuthLoading, reportType, router, session]);
 
   const handleImageChange = (file: File | null) => {
     setField('imageFile', file);
@@ -121,13 +139,21 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
       return;
     }
 
-    if (!isAuthReady) {
+    if (isAuthLoading) {
       setErrors((prev) => ({ ...prev, form: 'Please wait while we verify your account.' }));
+      return;
+    }
+
+    if (!session) {
+      setAuthMessage('Please log in to submit a report.');
+      router.replace(`/login?redirect=/report/${reportType}`);
       return;
     }
 
     setIsSubmitting(true);
     setErrors((prev) => ({ ...prev, form: undefined }));
+
+    let step: SubmissionStep = 'unexpected';
 
     try {
       const client = supabase;
@@ -136,9 +162,35 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
         throw new Error('Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
       }
 
+      step = 'auth-session';
+      const {
+        data: { session: currentSession },
+        error: sessionError,
+      } = await client.auth.getSession();
+
+      if (sessionError) {
+        throw sessionError;
+      }
+
+      if (!currentSession) {
+        setAuthMessage('Your session has ended. Please log in again before submitting.');
+        router.replace(`/login?redirect=/report/${reportType}`);
+        throw new Error('Authentication is required to submit a report.');
+      }
+
+      step = 'profile-lookup';
+      const profileId = await getCurrentProfileId();
+
+      if (!profileId) {
+        setAuthMessage('Your account profile could not be found. Please sign in again and try submitting the report.');
+        router.replace(`/login?redirect=/report/${reportType}`);
+        throw new Error('Your account profile could not be found.');
+      }
+
       let imageUrl: string | null = null;
 
       if (values.imageFile) {
+        step = 'image-upload';
         const safeFileName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${values.imageFile.name.replace(/\s+/g, '-').toLowerCase()}`;
         const { error: uploadError } = await client.storage.from('item-images').upload(safeFileName, values.imageFile, {
           cacheControl: '3600',
@@ -147,7 +199,6 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
 
         if (uploadError) {
           const uploadMessage = getSupabaseErrorMessage(uploadError, 'Image upload failed.');
-          console.error('[WildFinds] Supabase storage upload failed', uploadError);
           throw new Error(`Image upload failed: ${uploadMessage}`);
         }
 
@@ -155,18 +206,11 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
         imageUrl = publicUrlData.publicUrl || null;
       }
 
-      const profileId = await getCurrentProfileId();
-
-      if (!profileId) {
-        setAuthMessage('Your account profile could not be found. Please sign in again and try submitting the report.');
-        router.replace(`/login?redirect=/report/${reportType}`);
-        throw new Error('Your account profile could not be found. Please sign in again and try submitting the report.');
-      }
-
       let referenceNumber: string | null = null;
       let itemId: string | null = null;
 
       for (let attempt = 0; attempt < 3; attempt += 1) {
+        step = 'reference-generation';
         const { data: generatedReference, error: referenceError } = await client.rpc('generate_reference_number', {
           report_type: reportType,
           report_date: values.dateReported,
@@ -174,7 +218,6 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
 
         if (referenceError) {
           const referenceMessage = getSupabaseErrorMessage(referenceError, 'Unable to generate reference number.');
-          console.error('[WildFinds] Supabase reference generation failed', referenceError);
           throw new Error(`Unable to generate reference number: ${referenceMessage}`);
         }
 
@@ -184,6 +227,7 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
 
         referenceNumber = generatedReference;
 
+        step = 'item-insert';
         const { error: itemInsertError } = await client.from('items').insert({
           reference_number: referenceNumber,
           type: reportType,
@@ -207,15 +251,10 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
             continue;
           }
 
-          console.error('[WildFinds] Supabase item insert failed', {
-            error: itemInsertError,
-            referenceNumber,
-            reportType,
-            imageUrl,
-          });
           throw new Error(`Unable to create item record: ${itemErrorMessage}`);
         }
 
+        step = 'item-fetch';
         const { data: insertedItem, error: itemFetchError } = await client
           .from('items')
           .select('id')
@@ -223,10 +262,6 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
           .maybeSingle<{ id: string }>();
 
         if (itemFetchError) {
-          console.error('[WildFinds] Supabase item fetch after insert failed', {
-            error: itemFetchError,
-            referenceNumber,
-          });
           throw new Error(`Unable to load the created item: ${getSupabaseErrorMessage(itemFetchError, 'Unknown item fetch error.')}`);
         }
 
@@ -242,6 +277,7 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
         throw new Error('Unable to create item record.');
       }
 
+      step = 'report-insert';
       const { error: reportError } = await client.from('reports').insert({
         item_id: itemId,
         profile_id: profileId,
@@ -252,7 +288,6 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
 
       if (reportError) {
         const reportMessage = getSupabaseErrorMessage(reportError, 'Unable to save report.');
-        console.error('[WildFinds] Supabase report insert failed', reportError);
         throw new Error(`Unable to save report: ${reportMessage}`);
       }
 
@@ -280,14 +315,26 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
       setLastSubmitTime(Date.now());
       setValues(INITIAL_STATE);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to save report right now.';
-      setErrors((prev) => ({ ...prev, form: message }));
+      logSubmissionError(step, error);
+      setErrors((prev) => ({ ...prev, form: 'Unable to save your report right now. Please try again.' }));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const categories = useMemo(() => getItemCategories(), []);
+
+  if (isAuthLoading) {
+    return <div className="section-panel" aria-live="polite">Checking your account...</div>;
+  }
+
+  if (!session) {
+    return (
+      <div className="section-panel" aria-live="polite">
+        <p className="validation-message">{authMessage || 'Please log in to submit a report.'}</p>
+      </div>
+    );
+  }
 
   return (
     <form className="report-form" onSubmit={handleSubmit}>
@@ -470,8 +517,8 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
 
       <div className="form-actions">
         {errors.form ? <p className="validation-message">{errors.form}</p> : null}
-        <button type="submit" className="primary-button" disabled={isSubmitting || !isAuthReady}>
-          Submit Report
+        <button type="submit" className="primary-button" disabled={isSubmitting || isAuthLoading}>
+          {isSubmitting ? 'Submitting...' : 'Submit Report'}
         </button>
       </div>
     </form>
