@@ -73,6 +73,13 @@ export function useItems(): UseItemsResult {
           .order('created_at', { ascending: false });
 
         if (queryError) {
+          console.error('[WildFinds] Supabase items query failed', {
+            code: queryError.code,
+            message: queryError.message,
+            details: queryError.details,
+            hint: queryError.hint,
+            error: queryError,
+          });
           throw queryError;
         }
 
