@@ -44,6 +44,9 @@ export default function HomePage() {
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
   );
+  const isFoundTab = activeTab === "found";
+  const reportLabel = isFoundTab ? "Report Found Item" : "Report Lost Item";
+  const reportHref = isFoundTab ? "/report/found" : "/report/lost";
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -90,8 +93,8 @@ export default function HomePage() {
       <section className="top-panel">
         <SearchBar value={searchQuery} onSearchChange={handleSearchChange} />
         <div className="report-section">
-          <Link href="/report/lost" className="report-button">
-            + Report Lost Item
+          <Link href={reportHref} className="report-button">
+            + {reportLabel}
           </Link>
         </div>
       </section>
