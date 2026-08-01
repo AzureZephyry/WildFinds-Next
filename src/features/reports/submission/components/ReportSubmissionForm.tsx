@@ -3,22 +3,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/core/authentication/components/AuthenticationProvider";
-import { getCurrentProfileId } from "@/infrastructure/supabase/authentication/supabaseAuthentication";
-import { supabase } from "@/infrastructure/supabase/clients/browserSupabaseClient";
 import FormField from "@/components/FormField";
 import ReportImageUploader from "@/features/reports/submission/components/ReportImageUploader";
 import ReportSubmissionResult from "@/features/reports/submission/components/ReportSubmissionResult";
 import ReportValidationMessage from "@/features/reports/submission/components/ReportValidationMessage";
 import { reportBuildingOptions } from "@/features/reports/submission/configuration/reportBuildingOptions";
 import { reportCategoryOptions } from "@/features/reports/submission/configuration/reportCategoryOptions";
-import { createOwnedReport } from "@/features/reports/submission/commands/createOwnedReport";
-import { createReportedItem } from "@/features/reports/submission/commands/createReportedItem";
 import { useReportSubmissionForm } from "@/features/reports/submission/hooks/useReportSubmissionForm";
 import type { ReportFormProps } from "@/features/reports/submission/models/reportFormModels";
 import type { ReportSubmissionPayload } from "@/features/reports/submission/models/reportSubmissionModels";
-import { findCreatedReportedItem } from "@/features/reports/submission/queries/findCreatedReportedItem";
-import { generateReportReferenceNumber } from "@/features/reports/submission/reference/generateReportReferenceNumber";
-import { uploadReportImage } from "@/features/reports/submission/storage/uploadReportImage";
+import { submitItemReport } from "@/features/reports/submission/workflows/submitItemReport";
 
 type SubmissionStep =
   | "auth-session"
@@ -126,122 +120,14 @@ export default function ReportSubmissionForm({ reportType, onSubmit, successExpl
     setIsSubmitting(true);
     setSubmissionError(undefined);
 
-    let step: SubmissionStep = "unexpected";
+    const step: SubmissionStep = "unexpected";
 
     try {
-      const client = supabase;
-
-      if (!client) {
-        throw new Error("Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
-      }
-
-      step = "auth-session";
-      const {
-        data: { session: currentSession },
-        error: sessionError,
-      } = await client.auth.getSession();
-
-      if (sessionError) {
-        throw sessionError;
-      }
-
-      if (!currentSession) {
-        setAuthMessage("Your session has ended. Please log in again before submitting.");
-        router.replace(`/login?redirect=/report/${reportType}`);
-        throw new Error("Authentication is required to submit a report.");
-      }
-
-      step = "profile-lookup";
-      const profileId = await getCurrentProfileId();
-
-      if (!profileId) {
-        setAuthMessage("Your account profile could not be found. Please sign in again and try submitting the report.");
-        router.replace(`/login?redirect=/report/${reportType}`);
-        throw new Error("Your account profile could not be found.");
-      }
-
-      let imageUrl: string | null = null;
-
-      if (values.imageFile) {
-        step = "image-upload";
-        imageUrl = await uploadReportImage(client, values.imageFile);
-      }
-
-      let referenceNumber: string | null = null;
-      let itemId: string | null = null;
-
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        step = "reference-generation";
-        referenceNumber = await generateReportReferenceNumber(client, reportType, values.dateReported);
-
-        step = "item-insert";
-        try {
-          await createReportedItem(client, {
-            referenceNumber,
-            reportType,
-            itemName: values.itemName,
-            category: values.category,
-            description: values.description,
-            brand: values.brand,
-            color: values.color,
-            identifyingMarks: values.identifyingMarks,
-            building: values.building,
-            location: values.location,
-            dateReported: values.dateReported,
-            timeReported: values.timeReported,
-            imageUrl,
-          });
-        } catch (error) {
-          if (error instanceof Error && error.message === "RETRY_REFERENCE_NUMBER") {
-            continue;
-          }
-          throw error;
-        }
-
-        step = "item-fetch";
-        const createdItem = await findCreatedReportedItem(client, { referenceNumber });
-        itemId = createdItem.id;
-        break;
-      }
-
-      if (!referenceNumber || !itemId) {
-        throw new Error("Unable to create item record.");
-      }
-
-      step = "report-insert";
-      console.log("[WildFinds] Report ownership insert", {
-        itemId,
-        profileId,
-        sessionUserId: currentSession.user.id,
+      const payload = await submitItemReport({
+        reportType,
+        values,
+        selectedImage,
       });
-
-      await createOwnedReport(client, {
-        itemId,
-        profileId,
-        reporterName: values.reporterName,
-        email: values.email,
-        contactNumber: values.contactNumber,
-      });
-
-      const payload: ReportSubmissionPayload = {
-        id: itemId,
-        referenceNumber,
-        name: values.itemName,
-        category: values.category,
-        location: values.location,
-        building: values.building,
-        dateReported: values.dateReported,
-        timeReported: values.timeReported,
-        brand: values.brand,
-        color: values.color,
-        identifyingMarks: values.identifyingMarks,
-        description: values.description,
-        contactNumber: values.contactNumber,
-        email: values.email,
-        imageUrl: imageUrl || "",
-        status: "submitted",
-        type: reportType,
-      };
 
       onSubmit(payload);
       setLastSubmitTime(Date.now());
@@ -253,6 +139,18 @@ export default function ReportSubmissionForm({ reportType, onSubmit, successExpl
       reset();
       setAuthMessage(null);
     } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === "Authentication is required to submit a report.") {
+          setAuthMessage("Your session has ended. Please log in again before submitting.");
+          router.replace(`/login?redirect=/report/${reportType}`);
+        }
+
+        if (error.message === "Your account profile could not be found.") {
+          setAuthMessage("Your account profile could not be found. Please sign in again and try submitting the report.");
+          router.replace(`/login?redirect=/report/${reportType}`);
+        }
+      }
+
       logSubmissionError(step, error);
       setSubmissionError("Unable to save your report right now. Please try again.");
     } finally {
@@ -279,7 +177,7 @@ export default function ReportSubmissionForm({ reportType, onSubmit, successExpl
       <div>
         <ReportSubmissionResult
           referenceNumber={submittedPayload.referenceNumber}
-          status={submittedPayload.status}
+          status="submitted"
           nextStep={successExplanation || "Keep an eye on your report and check the home page for matching submissions."}
         />
       </div>
