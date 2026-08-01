@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { HeaderProps } from "@/types/layout";
-import { useAuth } from "@/components/AuthProvider";
+import type { HeaderProps } from "@/shared/layout/layoutModels";
+import { useAuth } from "@/core/authentication/components/AuthenticationProvider";
 
-export default function Header({ onMenuToggle, isDrawerOpen }: HeaderProps) {
+export default function SiteHeader({ onMenuToggle, isDrawerOpen }: HeaderProps) {
   const router = useRouter();
   const { session, isLoading, signOut } = useAuth();
   const [logoutError, setLogoutError] = useState<string | null>(null);

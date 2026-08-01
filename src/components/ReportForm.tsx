@@ -11,7 +11,7 @@ import { validateReport } from '../utils/validation';
 import type { ReportFormErrors, ReportFormProps, ReportFormValues, ReportSubmissionPayload } from '../types/reports';
 import { supabase } from '../lib/supabase/client';
 import { getCurrentProfileId } from '../lib/supabase/auth';
-import { useAuth } from '@/components/AuthProvider';
+import { useAuth } from '@/core/authentication/components/AuthenticationProvider';
 
 const INITIAL_STATE: ReportFormValues = {
   itemName: '',

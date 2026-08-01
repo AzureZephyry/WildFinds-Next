@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import EmptyState from "@/components/EmptyState";
 import MyReportCard from "@/components/MyReportCard";
-import { useAuth } from "@/components/AuthProvider";
+import { useAuth } from "@/core/authentication/components/AuthenticationProvider";
 import { useMyReports } from "@/hooks/useMyReports";
 import { useRouter } from "next/navigation";
 

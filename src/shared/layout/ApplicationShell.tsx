@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import AuthProvider from "@/components/AuthProvider";
-import Drawer from "@/components/Drawer";
-import Header from "@/components/Header";
+import NavigationDrawer from "@/shared/layout/NavigationDrawer";
+import SiteHeader from "@/shared/layout/SiteHeader";
 
-export default function LayoutClient({ children }: { children: React.ReactNode }) {
+export default function ApplicationShell({ children }: { children: React.ReactNode }) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const toggleDrawer = () => {
@@ -25,12 +24,10 @@ export default function LayoutClient({ children }: { children: React.ReactNode }
   }, [isDrawerOpen]);
 
   return (
-    <AuthProvider>
-      <div>
-        <Header onMenuToggle={toggleDrawer} isDrawerOpen={isDrawerOpen} />
-        <Drawer isOpen={isDrawerOpen} onClose={closeDrawer} />
-        <main className="page-layout">{children}</main>
-      </div>
-    </AuthProvider>
+    <div>
+      <SiteHeader onMenuToggle={toggleDrawer} isDrawerOpen={isDrawerOpen} />
+      <NavigationDrawer isOpen={isDrawerOpen} onClose={closeDrawer} />
+      <main className="page-layout">{children}</main>
+    </div>
   );
 }

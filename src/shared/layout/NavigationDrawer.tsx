@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { useAuth } from "@/components/AuthProvider";
-import type { DrawerProps } from "@/types/layout";
+import { useAuth } from "@/core/authentication/components/AuthenticationProvider";
+import type { DrawerProps } from "@/shared/layout/layoutModels";
 
 const navigationItems = [
   { href: "/", label: "Home" },
@@ -10,7 +10,7 @@ const navigationItems = [
   { href: "/about#team", label: "Developers / Team" },
 ];
 
-export default function Drawer({ isOpen, onClose }: DrawerProps) {
+export default function NavigationDrawer({ isOpen, onClose }: DrawerProps) {
   const { session, isLoading } = useAuth();
 
   return (
