@@ -1,10 +1,10 @@
 import SkeletonCard from "@/components/SkeletonCard";
 
-interface SkeletonListProps {
+interface ItemLoadingListProps {
   count?: number;
 }
 
-export default function SkeletonList({ count = 4 }: SkeletonListProps) {
+export default function ItemLoadingList({ count = 4 }: ItemLoadingListProps) {
   return (
     <div className="skeleton-list">
       {Array.from({ length: count }).map((_, index) => (

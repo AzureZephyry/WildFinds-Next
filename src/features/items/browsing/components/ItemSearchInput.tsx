@@ -1,9 +1,9 @@
-interface SearchBarProps {
+interface ItemSearchInputProps {
   value: string;
   onSearchChange: (value: string) => void;
 }
 
-export default function SearchBar({ value, onSearchChange }: SearchBarProps) {
+export default function ItemSearchInput({ value, onSearchChange }: ItemSearchInputProps) {
   return (
     <div className="search-box">
       <label htmlFor="searchInput" className="search-label">

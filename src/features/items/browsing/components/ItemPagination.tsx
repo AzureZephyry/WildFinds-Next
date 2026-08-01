@@ -1,10 +1,10 @@
-interface PaginationProps {
+interface ItemPaginationProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
 }
 
-export default function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
+export default function ItemPagination({ currentPage, totalPages, onPageChange }: ItemPaginationProps) {
   if (totalPages <= 1) {
     return null;
   }

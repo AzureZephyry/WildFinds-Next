@@ -1,9 +1,9 @@
-interface TabsProps {
+interface ItemTypeTabsProps {
   activeTab: "lost" | "found";
   onTabChange: (tab: "lost" | "found") => void;
 }
 
-export default function Tabs({ activeTab, onTabChange }: TabsProps) {
+export default function ItemTypeTabs({ activeTab, onTabChange }: ItemTypeTabsProps) {
   return (
     <div className="tab-controls" role="tablist" aria-label="Lost and found categories">
       <button

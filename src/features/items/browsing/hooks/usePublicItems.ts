@@ -4,13 +4,13 @@ import type { ItemCardViewModel } from '@/features/items/browsing/models/itemCar
 import { mapItemCardViewModel } from '@/features/items/browsing/mappers/mapItemCardViewModel';
 import type { ItemDatabaseRecord } from '@/features/items/shared/models/itemDatabaseRecord';
 
-interface UseItemsResult {
+interface UsePublicItemsResult {
   items: ItemCardViewModel[];
   isLoading: boolean;
   error: string | null;
 }
 
-export function useItems(): UseItemsResult {
+export function usePublicItems(): UsePublicItemsResult {
   const [items, setItems] = useState<ItemCardViewModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

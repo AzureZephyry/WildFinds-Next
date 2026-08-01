@@ -1,6 +1,6 @@
 import type { FilterValues } from "@/features/items/browsing/models/itemFilterModels";
 
-interface FilterBarProps {
+interface ItemFilterPanelProps {
   filters: FilterValues;
   categories: string[];
   statuses: string[];
@@ -9,14 +9,14 @@ interface FilterBarProps {
   onClearFilters: () => void;
 }
 
-export default function FilterBar({
+export default function ItemFilterPanel({
   filters,
   categories,
   statuses,
   buildings,
   onFilterChange,
   onClearFilters,
-}: FilterBarProps) {
+}: ItemFilterPanelProps) {
   return (
     <section className="filter-bar" aria-label="Item filters">
       <div className="filter-group">
