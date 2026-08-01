@@ -1,52 +1,17 @@
 import { useEffect, useState } from 'react';
 import { getSupabaseClient } from '@/infrastructure/supabase/clients/browserSupabaseClient';
-import type { ItemCardItem } from '@/types/items';
-
-interface SupabaseItemRecord {
-  id: string;
-  reference_number: string | null;
-  type: string | null;
-  name: string | null;
-  category: string | null;
-  description: string | null;
-  brand: string | null;
-  color: string | null;
-  identifying_marks: string | null;
-  building: string | null;
-  location: string | null;
-  date_reported: string | null;
-  time_reported: string | null;
-  image_url: string | null;
-  status: string | null;
-}
+import type { ItemCardViewModel } from '@/features/items/browsing/models/itemCardViewModel';
+import { mapItemCardViewModel } from '@/features/items/browsing/mappers/mapItemCardViewModel';
+import type { ItemDatabaseRecord } from '@/features/items/shared/models/itemDatabaseRecord';
 
 interface UseItemsResult {
-  items: ItemCardItem[];
+  items: ItemCardViewModel[];
   isLoading: boolean;
   error: string | null;
 }
 
-function mapItemRecord(record: SupabaseItemRecord): ItemCardItem {
-  return {
-    id: record.id,
-    name: record.name ?? 'Untitled item',
-    type: record.type ?? 'lost',
-    category: record.category ?? 'Other',
-    location: record.location ?? 'Unknown location',
-    dateReported: record.date_reported ?? '',
-    status: record.status ?? 'submitted',
-    referenceNumber: record.reference_number ?? undefined,
-    imageUrl: record.image_url ?? undefined,
-    building: record.building ?? undefined,
-    description: record.description ?? undefined,
-    brand: record.brand ?? undefined,
-    color: record.color ?? undefined,
-    identifyingMarks: record.identifying_marks ?? undefined,
-  };
-}
-
 export function useItems(): UseItemsResult {
-  const [items, setItems] = useState<ItemCardItem[]>([]);
+  const [items, setItems] = useState<ItemCardViewModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,7 +52,7 @@ export function useItems(): UseItemsResult {
           return;
         }
 
-        const mappedItems = (data ?? []).map((item) => mapItemRecord(item as SupabaseItemRecord));
+        const mappedItems = (data ?? []).map((item) => mapItemCardViewModel(item as ItemDatabaseRecord));
         setItems(mappedItems);
         setError(null);
       } catch (queryError) {

@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useState } from "react";
 import FormField from "@/components/FormField";
-import type { ItemCardItem } from "@/types/items";
+import type { ItemCardViewModel } from "@/features/items/browsing/models/itemCardViewModel";
 
 interface ClaimMatchFormProps {
-  item: ItemCardItem;
+  item: ItemCardViewModel;
   eyebrow: string;
   heading: string;
   description: string;

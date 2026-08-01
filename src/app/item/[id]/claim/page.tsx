@@ -3,7 +3,7 @@ import ErrorState from "@/components/ErrorState";
 import ItemSummary from "@/components/ItemSummary";
 import ClaimMatchForm from "@/components/ClaimMatchForm";
 import { mockItems } from "@/data/mockItems";
-import type { ItemCardItem } from "@/types/items";
+import type { ItemCardViewModel } from "@/features/items/browsing/models/itemCardViewModel";
 
 interface ClaimItemPageProps {
   params: Promise<{ id: string }>;
@@ -11,7 +11,7 @@ interface ClaimItemPageProps {
 
 export default async function ClaimItemPage({ params }: ClaimItemPageProps) {
   const { id } = await params;
-  const item = mockItems.find((entry) => entry.id === id) as ItemCardItem | undefined;
+  const item = mockItems.find((entry) => entry.id === id) as ItemCardViewModel | undefined;
 
   if (!item) {
     return (

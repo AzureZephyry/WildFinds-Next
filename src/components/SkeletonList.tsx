@@ -1,5 +1,8 @@
 import SkeletonCard from "@/components/SkeletonCard";
-import type { SkeletonListProps } from "@/types/items";
+
+interface SkeletonListProps {
+  count?: number;
+}
 
 export default function SkeletonList({ count = 4 }: SkeletonListProps) {
   return (

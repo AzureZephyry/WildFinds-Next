@@ -4,22 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 import EmptyState from '@/components/EmptyState';
 import HistoryCard from '@/components/HistoryCard';
 import { getSupabaseClient } from '@/infrastructure/supabase/clients/browserSupabaseClient';
-
-interface HistoryItem {
-  id: string;
-  name: string;
-  type: string;
-  category: string;
-  location: string;
-  dateReported: string;
-  referenceNumber?: string;
-  imageUrl?: string;
-  status: string;
-  resolvedAt?: string | null;
-}
+import { mapResolvedItemViewModel } from '@/features/items/history/mappers/mapResolvedItemViewModel';
+import type { ResolvedItemViewModel } from '@/features/items/history/models/resolvedItemViewModel';
+import type { ItemDatabaseRecord } from '@/features/items/shared/models/itemDatabaseRecord';
 
 export default function HistoryPage() {
-  const [items, setItems] = useState<HistoryItem[]>([]);
+  const [items, setItems] = useState<ResolvedItemViewModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,18 +43,7 @@ export default function HistoryPage() {
           return;
         }
 
-        const mappedItems = (data ?? []).map((item) => ({
-          id: item.id,
-          name: item.name ?? 'Untitled item',
-          type: item.type ?? 'lost',
-          category: item.category ?? 'Other',
-          location: item.location ?? 'Unknown location',
-          dateReported: item.date_reported ?? '',
-          referenceNumber: item.reference_number ?? undefined,
-          imageUrl: item.image_url ?? undefined,
-          status: item.status ?? 'claimed',
-          resolvedAt: item.resolved_at ?? null,
-        }));
+        const mappedItems = (data ?? []).map((item) => mapResolvedItemViewModel(item as ItemDatabaseRecord));
 
         setItems(mappedItems);
         setError(null);

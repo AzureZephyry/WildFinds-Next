@@ -1,6 +1,6 @@
-import type { ItemCardItem } from "@/types/items";
+import type { ItemCardViewModel } from "@/features/items/browsing/models/itemCardViewModel";
 
-export function searchItems(items: ItemCardItem[], query: string) {
+export function searchItems(items: ItemCardViewModel[], query: string) {
   const normalizedQuery = String(query || "").trim().toLowerCase();
 
   if (!normalizedQuery) {

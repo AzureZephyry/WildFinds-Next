@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { applyFilters, filterByTab } from "@/utils/filterItems";
 import { searchItems } from "@/utils/searchItems";
-import type { FilterValues, ItemCardItem } from "@/types/items";
+import type { FilterValues } from "@/features/items/browsing/models/itemFilterModels";
+import type { ItemCardViewModel } from "@/features/items/browsing/models/itemCardViewModel";
 
 interface UseSearchAndFilterArgs {
   activeTab: "lost" | "found";
@@ -9,7 +10,7 @@ interface UseSearchAndFilterArgs {
   filters: FilterValues;
 }
 
-export function useSearchAndFilter(items: ItemCardItem[], { activeTab, searchQuery, filters }: UseSearchAndFilterArgs) {
+export function useSearchAndFilter(items: ItemCardViewModel[], { activeTab, searchQuery, filters }: UseSearchAndFilterArgs) {
   return useMemo(() => {
     const tabFiltered = filterByTab(items, activeTab);
     const searched = searchItems(tabFiltered, searchQuery);

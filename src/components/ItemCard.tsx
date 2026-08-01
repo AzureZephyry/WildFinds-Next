@@ -1,7 +1,11 @@
 import Link from "next/link";
-import ItemImage from "@/components/ItemImage";
-import ReferenceBadge from "@/components/ReferenceBadge";
-import type { ItemCardProps } from "@/types/items";
+import ItemImage from "@/features/items/shared/components/ItemImage";
+import ItemReferenceBadge from "@/features/items/shared/components/ItemReferenceBadge";
+import type { ItemCardViewModel } from "@/features/items/browsing/models/itemCardViewModel";
+
+interface ItemCardProps {
+  item: ItemCardViewModel;
+}
 
 export default function ItemCard({ item }: ItemCardProps) {
   const referenceDisplay = item.referenceNumber || item.id;
@@ -18,7 +22,7 @@ export default function ItemCard({ item }: ItemCardProps) {
         <div className="item-card__meta">
           <div>
             <strong>Reference No.</strong>
-            <ReferenceBadge referenceNumber={referenceDisplay} />
+            <ItemReferenceBadge referenceNumber={referenceDisplay} />
           </div>
           <div>
             <strong>Category</strong>

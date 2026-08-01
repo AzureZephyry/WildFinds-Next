@@ -1,4 +1,13 @@
-import type { FilterBarProps } from "@/types/items";
+import type { FilterValues } from "@/features/items/browsing/models/itemFilterModels";
+
+interface FilterBarProps {
+  filters: FilterValues;
+  categories: string[];
+  statuses: string[];
+  buildings: string[];
+  onFilterChange: (key: keyof FilterValues, value: string) => void;
+  onClearFilters: () => void;
+}
 
 export default function FilterBar({
   filters,

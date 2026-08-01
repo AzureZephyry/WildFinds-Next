@@ -1,10 +1,10 @@
-import ItemImage from "@/components/ItemImage";
-import ReferenceBadge from "@/components/ReferenceBadge";
-import type { ItemCardItem } from "@/types/items";
-import type { ItemDetail } from "@/types/itemDetail";
+import ItemImage from "@/features/items/shared/components/ItemImage";
+import ItemReferenceBadge from "@/features/items/shared/components/ItemReferenceBadge";
+import type { ItemCardViewModel } from "@/features/items/browsing/models/itemCardViewModel";
+import type { ItemDetailViewModel } from "@/features/items/details/models/itemDetailViewModel";
 
 interface ItemSummaryProps {
-  item: ItemCardItem | ItemDetail;
+  item: ItemCardViewModel | ItemDetailViewModel;
 }
 
 export default function ItemSummary({ item }: ItemSummaryProps) {
@@ -16,7 +16,7 @@ export default function ItemSummary({ item }: ItemSummaryProps) {
       <div className="detail-grid">
         <div className="detail-row">
           <span className="detail-label">Reference Number</span>
-          <ReferenceBadge referenceNumber={referenceDisplay} />
+          <ItemReferenceBadge referenceNumber={referenceDisplay} />
         </div>
         <div className="detail-row">
           <span className="detail-label">Category</span>

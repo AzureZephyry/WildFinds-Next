@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getCurrentProfileId } from "@/infrastructure/supabase/authentication/supabaseAuthentication";
 import { getSupabaseClient } from "@/infrastructure/supabase/clients/browserSupabaseClient";
+import type { ItemDatabaseRecord } from "@/features/items/shared/models/itemDatabaseRecord";
 import type { MyReportItem } from "@/types/myReports";
 
 interface ReportRecord {
@@ -10,18 +11,7 @@ interface ReportRecord {
   submitted_at: string | null;
 }
 
-interface ItemRecord {
-  id: string;
-  reference_number: string | null;
-  type: string | null;
-  name: string | null;
-  category: string | null;
-  building: string | null;
-  location: string | null;
-  date_reported: string | null;
-  image_url: string | null;
-  status: string | null;
-}
+type MyReportItemRecord = Pick<ItemDatabaseRecord, "id" | "reference_number" | "type" | "name" | "category" | "building" | "location" | "date_reported" | "image_url" | "status">;
 
 interface UseMyReportsResult {
   reports: MyReportItem[];
@@ -30,7 +20,7 @@ interface UseMyReportsResult {
   reload: () => void;
 }
 
-function mapReport(report: ReportRecord, item: ItemRecord): MyReportItem {
+function mapReport(report: ReportRecord, item: MyReportItemRecord): MyReportItem {
   return {
     reportId: report.id,
     itemId: item.id,
@@ -136,7 +126,7 @@ export function useMyReports(sessionUserId: string | undefined, isAuthLoading: b
           throw itemError;
         }
 
-        const itemRecords = (itemData ?? []) as ItemRecord[];
+        const itemRecords = (itemData ?? []) as MyReportItemRecord[];
         const itemsById = new Map(itemRecords.map((item) => [item.id, item]));
         const mappedReports = reportRecords.flatMap((report) => {
           const item = itemsById.get(report.item_id);

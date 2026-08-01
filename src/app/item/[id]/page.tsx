@@ -6,64 +6,15 @@ import ErrorState from "@/components/ErrorState";
 import ItemSummary from "@/components/ItemSummary";
 import { useAuth } from "@/core/authentication/components/AuthenticationProvider";
 import { getSupabaseClient } from "@/infrastructure/supabase/clients/browserSupabaseClient";
-import type { ItemDetail, ItemStatus } from "@/types/itemDetail";
+import { mapItemDetailViewModel } from "@/features/items/details/mappers/mapItemDetailViewModel";
+import type { ItemDetailViewModel } from "@/features/items/details/models/itemDetailViewModel";
+import type { ItemDatabaseRecord } from "@/features/items/shared/models/itemDatabaseRecord";
 
 interface ItemDetailsPageProps {
   params: Promise<{ id: string }>;
 }
 
-interface SupabaseItemRecord {
-  id: string;
-  reference_number: string | null;
-  type: string | null;
-  name: string | null;
-  category: string | null;
-  description: string | null;
-  brand: string | null;
-  color: string | null;
-  identifying_marks: string | null;
-  building: string | null;
-  location: string | null;
-  date_reported: string | null;
-  time_reported: string | null;
-  image_url: string | null;
-  status: string | null;
-  created_at: string | null;
-  resolved_at: string | null;
-}
-
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const ITEM_STATUSES = new Set<ItemStatus>(["submitted", "active", "matched", "claimed", "closed"]);
-
-function mapItem(record: SupabaseItemRecord): ItemDetail | null {
-  if (record.type !== "lost" && record.type !== "found") {
-    return null;
-  }
-
-  const status = record.status && ITEM_STATUSES.has(record.status as ItemStatus)
-    ? record.status as ItemStatus
-    : "submitted";
-
-  return {
-    id: record.id,
-    referenceNumber: record.reference_number ?? undefined,
-    type: record.type,
-    name: record.name ?? "Untitled item",
-    category: record.category ?? "Other",
-    description: record.description ?? undefined,
-    brand: record.brand ?? undefined,
-    color: record.color ?? undefined,
-    identifyingMarks: record.identifying_marks ?? undefined,
-    building: record.building ?? undefined,
-    location: record.location ?? "Unknown location",
-    dateReported: record.date_reported ?? "",
-    timeReported: record.time_reported ?? undefined,
-    imageUrl: record.image_url ?? undefined,
-    status,
-    createdAt: record.created_at ?? undefined,
-    resolvedAt: record.resolved_at ?? undefined,
-  };
-}
 
 function UnavailableItem({ message = "This item may have been removed or the link may be invalid." }: { message?: string }) {
   return (
@@ -78,7 +29,7 @@ function UnavailableItem({ message = "This item may have been removed or the lin
 export default function ItemDetailsPage({ params }: ItemDetailsPageProps) {
   const { session } = useAuth();
   const [itemId, setItemId] = useState<string | null>(null);
-  const [item, setItem] = useState<ItemDetail | null>(null);
+  const [item, setItem] = useState<ItemDetailViewModel | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -110,7 +61,7 @@ export default function ItemDetailsPage({ params }: ItemDetailsPageProps) {
         .from("items")
         .select("id, reference_number, type, name, category, description, brand, color, identifying_marks, building, location, date_reported, time_reported, image_url, status, created_at, resolved_at")
         .eq("id", id)
-        .maybeSingle<SupabaseItemRecord>();
+        .maybeSingle<ItemDatabaseRecord>();
 
       if (!active) {
         return;
@@ -130,7 +81,7 @@ export default function ItemDetailsPage({ params }: ItemDetailsPageProps) {
         return;
       }
 
-      setItem(data ? mapItem(data) : null);
+      setItem(data ? mapItemDetailViewModel(data) : null);
       setErrorMessage(null);
       setIsLoading(false);
     };

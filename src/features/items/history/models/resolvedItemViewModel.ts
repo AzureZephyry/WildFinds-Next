@@ -1,18 +1,15 @@
 import type { ItemStatus } from "@/features/items/shared/models/itemStatus";
 import type { ItemType } from "@/features/items/shared/models/itemType";
 
-export interface MyReportItem {
-  reportId: string;
-  itemId: string;
-  referenceNumber?: string;
-  type: ItemType;
+export interface ResolvedItemViewModel {
+  id: string;
   name: string;
+  type: ItemType;
   category: string;
-  building?: string;
   location: string;
   dateReported: string;
+  referenceNumber?: string;
   imageUrl?: string;
-  itemStatus: ItemStatus;
-  reviewStatus: string;
-  submittedAt: string;
+  status: ItemStatus;
+  resolvedAt?: string | null;
 }

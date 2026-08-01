@@ -1,6 +1,6 @@
-import type { ItemCardItem } from "@/types/items";
+import type { ItemCardViewModel } from "@/features/items/browsing/models/itemCardViewModel";
 
-export const mockItems: ItemCardItem[] = [
+export const mockItems: ItemCardViewModel[] = [
   {
     id: "1",
     name: "Black Backpack",
@@ -131,7 +131,7 @@ export const mockItems: ItemCardItem[] = [
   },
 ];
 
-export function getMockFilterOptions(items: ItemCardItem[]) {
+export function getMockFilterOptions(items: ItemCardViewModel[]) {
   const categories = Array.from(
     new Set(items.map((item) => item.category).filter((value): value is string => Boolean(value))),
   ).sort();

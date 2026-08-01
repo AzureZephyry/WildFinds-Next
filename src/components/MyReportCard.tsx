@@ -1,5 +1,5 @@
-import ItemImage from "@/components/ItemImage";
-import ReferenceBadge from "@/components/ReferenceBadge";
+import ItemImage from "@/features/items/shared/components/ItemImage";
+import ItemReferenceBadge from "@/features/items/shared/components/ItemReferenceBadge";
 import type { MyReportItem } from "@/types/myReports";
 
 const ITEM_STATUS_LABELS: Record<string, string> = {
@@ -42,7 +42,7 @@ export default function MyReportCard({ report }: { report: MyReportItem }) {
         <div className="item-card__meta">
           <div>
             <strong>Reference No.</strong>
-            <ReferenceBadge referenceNumber={report.referenceNumber || report.itemId} />
+            <ItemReferenceBadge referenceNumber={report.referenceNumber || report.itemId} />
           </div>
           <div>
             <strong>Category</strong>

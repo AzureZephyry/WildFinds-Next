@@ -1,4 +1,7 @@
-import type { TabsProps } from "@/types/items";
+interface TabsProps {
+  activeTab: "lost" | "found";
+  onTabChange: (tab: "lost" | "found") => void;
+}
 
 export default function Tabs({ activeTab, onTabChange }: TabsProps) {
   return (

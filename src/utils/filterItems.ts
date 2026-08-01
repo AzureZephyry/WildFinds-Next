@@ -1,6 +1,7 @@
-import type { FilterValues, ItemCardItem } from "@/types/items";
+import type { FilterValues } from "@/features/items/browsing/models/itemFilterModels";
+import type { ItemCardViewModel } from "@/features/items/browsing/models/itemCardViewModel";
 
-export function filterByTab(items: ItemCardItem[], activeTab: string | undefined) {
+export function filterByTab(items: ItemCardViewModel[], activeTab: string | undefined) {
   if (!activeTab) {
     return items;
   }
@@ -8,7 +9,7 @@ export function filterByTab(items: ItemCardItem[], activeTab: string | undefined
   return items.filter((item) => item.type.toLowerCase() === activeTab.toLowerCase());
 }
 
-export function applyFilters(items: ItemCardItem[], filters: FilterValues) {
+export function applyFilters(items: ItemCardViewModel[], filters: FilterValues) {
   if (!filters) {
     return items;
   }

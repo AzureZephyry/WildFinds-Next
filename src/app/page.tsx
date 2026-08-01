@@ -11,7 +11,7 @@ import SkeletonList from "@/components/SkeletonList";
 import Tabs from "@/components/Tabs";
 import { useItems } from "@/hooks/useItems";
 import { useSearchAndFilter } from "@/hooks/useSearchAndFilter";
-import type { FilterValues } from "@/types/items";
+import type { FilterValues } from "@/features/items/browsing/models/itemFilterModels";
 
 const ITEMS_PER_PAGE = 10;
 

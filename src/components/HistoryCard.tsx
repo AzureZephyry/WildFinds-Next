@@ -1,19 +1,9 @@
-import ItemImage from '@/components/ItemImage';
-import ReferenceBadge from '@/components/ReferenceBadge';
+import ItemImage from '@/features/items/shared/components/ItemImage';
+import ItemReferenceBadge from '@/features/items/shared/components/ItemReferenceBadge';
+import type { ResolvedItemViewModel } from '@/features/items/history/models/resolvedItemViewModel';
 
 interface HistoryCardProps {
-  item: {
-    id: string;
-    name: string;
-    type: string;
-    category: string;
-    location: string;
-    dateReported: string;
-    referenceNumber?: string;
-    imageUrl?: string;
-    status: string;
-    resolvedAt?: string | null;
-  };
+  item: ResolvedItemViewModel;
 }
 
 export default function HistoryCard({ item }: HistoryCardProps) {
@@ -31,7 +21,7 @@ export default function HistoryCard({ item }: HistoryCardProps) {
         <div className="item-card__meta">
           <div>
             <strong>Reference No.</strong>
-            <ReferenceBadge referenceNumber={referenceDisplay} />
+            <ItemReferenceBadge referenceNumber={referenceDisplay} />
           </div>
           <div>
             <strong>Category</strong>

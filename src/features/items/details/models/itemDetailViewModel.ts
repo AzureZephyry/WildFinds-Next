@@ -1,9 +1,10 @@
-export type ItemStatus = "submitted" | "active" | "matched" | "claimed" | "closed";
+import type { ItemStatus } from "@/features/items/shared/models/itemStatus";
+import type { ItemType } from "@/features/items/shared/models/itemType";
 
-export interface ItemDetail {
+export interface ItemDetailViewModel {
   id: string;
   referenceNumber?: string;
-  type: "lost" | "found";
+  type: ItemType;
   name: string;
   category: string;
   description?: string;
