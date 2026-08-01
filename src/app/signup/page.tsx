@@ -1,10 +1,10 @@
 ﻿import { Suspense } from "react";
-import SignupPageContent from "./SignupPageContent";
+import SignupScreen from "@/features/authentication/signup/components/SignupScreen";
 
 export default function SignupPage() {
   return (
     <Suspense fallback={null}>
-      <SignupPageContent />
+      <SignupScreen />
     </Suspense>
   );
 }
