@@ -2,6 +2,7 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState } from "react";
+import { getSupabaseClient } from "@/infrastructure/supabase/clients/browserSupabaseClient";
 import { signUpAccount } from "@/features/authentication/signup/commands/signUpAccount";
 
 type AuthMessage = {
@@ -75,7 +76,7 @@ export default function SignupForm() {
     setPassword("");
     setConfirmPassword("");
 
-    const client = (await import("@/infrastructure/supabase/clients/browserSupabaseClient")).supabase;
+    const client = getSupabaseClient();
 
     if (client) {
       const {

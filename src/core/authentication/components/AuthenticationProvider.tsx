@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { supabase } from "@/infrastructure/supabase/clients/browserSupabaseClient";
+import { getSupabaseClient } from "@/infrastructure/supabase/clients/browserSupabaseClient";
 
 interface AuthContextValue {
   session: Session | null;
@@ -17,7 +17,7 @@ export default function AuthenticationProvider({ children }: { children: React.R
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const client = supabase;
+    const client = getSupabaseClient();
 
     if (!client) {
       const timer = window.setTimeout(() => setIsLoading(false), 0);
@@ -66,11 +66,13 @@ export default function AuthenticationProvider({ children }: { children: React.R
       session,
       isLoading,
       signOut: async () => {
-        if (!supabase) {
+        const client = getSupabaseClient();
+
+        if (!client) {
           return { error: new Error("Supabase is not configured.") };
         }
 
-        const { error } = await supabase.auth.signOut();
+        const { error } = await client.auth.signOut();
         return { error };
       },
     }),

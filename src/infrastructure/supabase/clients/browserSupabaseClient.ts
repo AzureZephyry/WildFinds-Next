@@ -5,13 +5,26 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 let supabaseClient: SupabaseClient | null = null;
 
-export function getSupabaseClient(): SupabaseClient | null {
+function getSupabaseConfig(): { url: string; anonKey: string } | null {
   if (!supabaseUrl || !supabaseAnonKey) {
     return null;
   }
 
+  return {
+    url: supabaseUrl,
+    anonKey: supabaseAnonKey,
+  };
+}
+
+export function getSupabaseClient(): SupabaseClient | null {
+  const config = getSupabaseConfig();
+
+  if (!config) {
+    return null;
+  }
+
   if (!supabaseClient) {
-    supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    supabaseClient = createClient(config.url, config.anonKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
@@ -22,4 +35,5 @@ export function getSupabaseClient(): SupabaseClient | null {
   return supabaseClient;
 }
 
+// Compatibility default export for existing consumers ΓÇö references same singleton
 export const supabase = getSupabaseClient();

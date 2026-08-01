@@ -1,13 +1,15 @@
-import { supabase } from "@/infrastructure/supabase/clients/browserSupabaseClient";
+import { getSupabaseClient } from "@/infrastructure/supabase/clients/browserSupabaseClient";
 
 export async function getCurrentSession() {
-  if (!supabase) {
+  const client = getSupabaseClient();
+
+  if (!client) {
     return null;
   }
 
   const {
     data: { session },
-  } = await supabase.auth.getSession();
+  } = await client.auth.getSession();
 
   return session;
 }
@@ -18,7 +20,7 @@ export async function getCurrentUser() {
 }
 
 export async function getCurrentProfileId() {
-  const client = supabase;
+  const client = getSupabaseClient();
 
   if (!client) {
     return null;
