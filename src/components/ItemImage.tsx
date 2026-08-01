@@ -1,5 +1,3 @@
-import type { ComponentPropsWithoutRef } from "react";
-
 interface ItemImageProps {
   imageUrl?: string;
 }

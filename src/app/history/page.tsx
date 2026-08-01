@@ -5,20 +5,6 @@ import EmptyState from '@/components/EmptyState';
 import HistoryCard from '@/components/HistoryCard';
 import { getSupabaseClient } from '@/lib/supabase/client';
 
-interface HistoryItemRecord {
-  id: string;
-  reference_number: string | null;
-  type: string | null;
-  name: string | null;
-  category: string | null;
-  building: string | null;
-  location: string | null;
-  date_reported: string | null;
-  image_url: string | null;
-  status: string | null;
-  resolved_at: string | null;
-}
-
 interface HistoryItem {
   id: string;
   name: string;

@@ -34,10 +34,3 @@ export function applyFilters(items: ItemCardItem[], filters: FilterValues) {
   });
 }
 
-export function getFilterOptions(items: ItemCardItem[]) {
-  const categories = Array.from(new Set(items.map((item) => item.category).filter(Boolean))).sort();
-  const statuses = Array.from(new Set(items.map((item) => item.status).filter(Boolean))).sort();
-  const buildings = Array.from(new Set(items.map((item) => item.building).filter(Boolean))).sort();
-
-  return { categories, statuses, buildings };
-}
