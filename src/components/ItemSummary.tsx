@@ -1,9 +1,10 @@
 import ItemImage from "@/components/ItemImage";
 import ReferenceBadge from "@/components/ReferenceBadge";
 import type { ItemCardItem } from "@/types/items";
+import type { ItemDetail } from "@/types/itemDetail";
 
 interface ItemSummaryProps {
-  item: ItemCardItem;
+  item: ItemCardItem | ItemDetail;
 }
 
 export default function ItemSummary({ item }: ItemSummaryProps) {
@@ -25,34 +26,50 @@ export default function ItemSummary({ item }: ItemSummaryProps) {
           <span className="detail-label">Location</span>
           <span className="detail-value">{item.location}</span>
         </div>
-        <div className="detail-row">
-          <span className="detail-label">Building</span>
-          <span className="detail-value">{item.building || "N/A"}</span>
-        </div>
+        {item.building ? (
+          <div className="detail-row">
+            <span className="detail-label">Building</span>
+            <span className="detail-value">{item.building}</span>
+          </div>
+        ) : null}
         <div className="detail-row">
           <span className="detail-label">Date reported</span>
           <span className="detail-value">{item.dateReported}</span>
         </div>
-        <div className="detail-row">
-          <span className="detail-label">Brand</span>
-          <span className="detail-value">{item.brand || "Unknown"}</span>
-        </div>
-        <div className="detail-row">
-          <span className="detail-label">Color</span>
-          <span className="detail-value">{item.color || "Unknown"}</span>
-        </div>
-        <div className="detail-row">
-          <span className="detail-label">Identifying marks</span>
-          <span className="detail-value">{item.identifyingMarks || "None"}</span>
-        </div>
+        {"timeReported" in item && item.timeReported ? (
+          <div className="detail-row">
+            <span className="detail-label">Time reported</span>
+            <span className="detail-value">{item.timeReported}</span>
+          </div>
+        ) : null}
+        {item.brand ? (
+          <div className="detail-row">
+            <span className="detail-label">Brand</span>
+            <span className="detail-value">{item.brand}</span>
+          </div>
+        ) : null}
+        {item.color ? (
+          <div className="detail-row">
+            <span className="detail-label">Color</span>
+            <span className="detail-value">{item.color}</span>
+          </div>
+        ) : null}
+        {item.identifyingMarks ? (
+          <div className="detail-row">
+            <span className="detail-label">Identifying marks</span>
+            <span className="detail-value">{item.identifyingMarks}</span>
+          </div>
+        ) : null}
         <div className="detail-row">
           <span className="detail-label">Status</span>
           <span className="detail-value item-details-status">{item.status}</span>
         </div>
-        <div className="detail-row">
-          <span className="detail-label">Description</span>
-          <span className="detail-value">{item.description || "No additional details provided."}</span>
-        </div>
+        {item.description ? (
+          <div className="detail-row">
+            <span className="detail-label">Description</span>
+            <span className="detail-value">{item.description}</span>
+          </div>
+        ) : null}
       </div>
     </div>
   );
