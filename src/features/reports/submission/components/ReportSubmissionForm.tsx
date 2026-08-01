@@ -14,6 +14,7 @@ import { reportCategoryOptions } from "@/features/reports/submission/configurati
 import { useReportSubmissionForm } from "@/features/reports/submission/hooks/useReportSubmissionForm";
 import type { ReportFormProps } from "@/features/reports/submission/models/reportFormModels";
 import type { ReportSubmissionPayload } from "@/features/reports/submission/models/reportSubmissionModels";
+import { uploadReportImage } from "@/features/reports/submission/storage/uploadReportImage";
 
 function getSupabaseErrorMessage(error: unknown, fallback: string): string {
   if (typeof error !== "object" || error === null) {
@@ -181,19 +182,7 @@ export default function ReportSubmissionForm({ reportType, onSubmit, successExpl
 
       if (values.imageFile) {
         step = "image-upload";
-        const safeFileName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${values.imageFile.name.replace(/\s+/g, "-").toLowerCase()}`;
-        const { error: uploadError } = await client.storage.from("item-images").upload(safeFileName, values.imageFile, {
-          cacheControl: "3600",
-          upsert: false,
-        });
-
-        if (uploadError) {
-          const uploadMessage = getSupabaseErrorMessage(uploadError, "Image upload failed.");
-          throw new Error(`Image upload failed: ${uploadMessage}`);
-        }
-
-        const { data: publicUrlData } = client.storage.from("item-images").getPublicUrl(safeFileName);
-        imageUrl = publicUrlData.publicUrl || null;
+        imageUrl = await uploadReportImage(client, values.imageFile);
       }
 
       let referenceNumber: string | null = null;
