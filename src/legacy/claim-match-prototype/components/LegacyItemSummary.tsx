@@ -1,12 +1,12 @@
 import ItemImage from "@/features/items/shared/components/ItemImage";
 import ItemReferenceBadge from "@/features/items/shared/components/ItemReferenceBadge";
-import type { ItemDetailViewModel } from "@/features/items/details/models/itemDetailViewModel";
+import type { LegacyMockItem } from "@/legacy/claim-match-prototype/models/legacyClaimMatchModels";
 
-interface ItemDetailSummaryProps {
-  item: ItemDetailViewModel;
+interface LegacyItemSummaryProps {
+  item: LegacyMockItem;
 }
 
-export default function ItemDetailSummary({ item }: ItemDetailSummaryProps) {
+export default function LegacyItemSummary({ item }: LegacyItemSummaryProps) {
   const referenceDisplay = item.referenceNumber || item.id;
 
   return (
@@ -35,7 +35,7 @@ export default function ItemDetailSummary({ item }: ItemDetailSummaryProps) {
           <span className="detail-label">Date reported</span>
           <span className="detail-value">{item.dateReported}</span>
         </div>
-        {"timeReported" in item && item.timeReported ? (
+        {item.timeReported ? (
           <div className="detail-row">
             <span className="detail-label">Time reported</span>
             <span className="detail-value">{item.timeReported}</span>
