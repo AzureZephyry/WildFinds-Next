@@ -1,7 +1,7 @@
 import type { ItemStatus } from "@/features/items/shared/models/itemStatus";
 import type { ItemType } from "@/features/items/shared/models/itemType";
 
-export interface MyReportItem {
+export interface PersonalReportViewModel {
   reportId: string;
   itemId: string;
   referenceNumber?: string;

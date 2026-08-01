@@ -1,6 +1,6 @@
 import ItemImage from "@/features/items/shared/components/ItemImage";
 import ItemReferenceBadge from "@/features/items/shared/components/ItemReferenceBadge";
-import type { MyReportItem } from "@/types/myReports";
+import type { PersonalReportViewModel } from "@/features/reports/personal/models/personalReportViewModel";
 
 const ITEM_STATUS_LABELS: Record<string, string> = {
   submitted: "Submitted",
@@ -29,7 +29,7 @@ function formatDate(value: string) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
 }
 
-export default function MyReportCard({ report }: { report: MyReportItem }) {
+export default function PersonalReportCard({ report }: { report: PersonalReportViewModel }) {
   return (
     <article className="item-card">
       <ItemImage imageUrl={report.imageUrl} />
