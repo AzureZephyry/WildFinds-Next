@@ -1,6 +1,6 @@
 import Link from "next/link";
 import ErrorState from "@/components/ErrorState";
-import ItemSummary from "@/components/ItemSummary";
+import ItemDetailSummary from "@/features/items/details/components/ItemDetailSummary";
 import ClaimMatchForm from "@/components/ClaimMatchForm";
 import { mockItems } from "@/data/mockItems";
 import type { ItemCardViewModel } from "@/features/items/browsing/models/itemCardViewModel";
@@ -49,7 +49,7 @@ export default async function ConfirmMatchPage({ params }: ConfirmMatchPageProps
           <p className="site-note">Provide details to confirm this item is your lost property.</p>
         </div>
 
-        <ItemSummary item={item} />
+        <ItemDetailSummary item={item} />
 
         <ClaimMatchForm
           item={item}

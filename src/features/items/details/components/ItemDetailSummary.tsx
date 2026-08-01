@@ -3,11 +3,11 @@ import ItemReferenceBadge from "@/features/items/shared/components/ItemReference
 import type { ItemCardViewModel } from "@/features/items/browsing/models/itemCardViewModel";
 import type { ItemDetailViewModel } from "@/features/items/details/models/itemDetailViewModel";
 
-interface ItemSummaryProps {
-  item: ItemCardViewModel | ItemDetailViewModel;
+interface ItemDetailSummaryProps {
+  item: ItemDetailViewModel | ItemCardViewModel;
 }
 
-export default function ItemSummary({ item }: ItemSummaryProps) {
+export default function ItemDetailSummary({ item }: ItemDetailSummaryProps) {
   const referenceDisplay = item.referenceNumber || item.id;
 
   return (

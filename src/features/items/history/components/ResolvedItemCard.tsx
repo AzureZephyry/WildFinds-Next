@@ -1,12 +1,12 @@
-import ItemImage from '@/features/items/shared/components/ItemImage';
-import ItemReferenceBadge from '@/features/items/shared/components/ItemReferenceBadge';
-import type { ResolvedItemViewModel } from '@/features/items/history/models/resolvedItemViewModel';
+import ItemImage from "@/features/items/shared/components/ItemImage";
+import ItemReferenceBadge from "@/features/items/shared/components/ItemReferenceBadge";
+import type { ResolvedItemViewModel } from "@/features/items/history/models/resolvedItemViewModel";
 
-interface HistoryCardProps {
+interface ResolvedItemCardProps {
   item: ResolvedItemViewModel;
 }
 
-export default function HistoryCard({ item }: HistoryCardProps) {
+export default function ResolvedItemCard({ item }: ResolvedItemCardProps) {
   const referenceDisplay = item.referenceNumber || item.id;
 
   return (

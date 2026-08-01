@@ -1,6 +1,6 @@
 import Link from "next/link";
 import ErrorState from "@/components/ErrorState";
-import ItemSummary from "@/components/ItemSummary";
+import ItemDetailSummary from "@/features/items/details/components/ItemDetailSummary";
 import ClaimMatchForm from "@/components/ClaimMatchForm";
 import { mockItems } from "@/data/mockItems";
 import type { ItemCardViewModel } from "@/features/items/browsing/models/itemCardViewModel";
@@ -49,7 +49,7 @@ export default async function ClaimItemPage({ params }: ClaimItemPageProps) {
           <p className="site-note">Provide your details to claim the found item.</p>
         </div>
 
-        <ItemSummary item={item} />
+        <ItemDetailSummary item={item} />
 
         <ClaimMatchForm
           item={item}
