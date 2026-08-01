@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import ErrorState from "@/components/ErrorState";
 import ItemSummary from "@/components/ItemSummary";
 import { useAuth } from "@/core/authentication/components/AuthenticationProvider";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/infrastructure/supabase/clients/browserSupabaseClient";
 import type { ItemDetail, ItemStatus } from "@/types/itemDetail";
 
 interface ItemDetailsPageProps {

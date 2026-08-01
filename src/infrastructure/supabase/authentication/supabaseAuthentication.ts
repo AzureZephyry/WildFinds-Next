@@ -1,4 +1,4 @@
-import { supabase } from "./client";
+import { supabase } from "@/infrastructure/supabase/clients/browserSupabaseClient";
 
 export async function getCurrentSession() {
   if (!supabase) {

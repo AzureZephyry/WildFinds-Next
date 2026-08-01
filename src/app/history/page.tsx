@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import EmptyState from '@/components/EmptyState';
 import HistoryCard from '@/components/HistoryCard';
-import { getSupabaseClient } from '@/lib/supabase/client';
+import { getSupabaseClient } from '@/infrastructure/supabase/clients/browserSupabaseClient';
 
 interface HistoryItem {
   id: string;

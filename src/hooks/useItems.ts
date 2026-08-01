@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getSupabaseClient } from '@/lib/supabase/client';
+import { getSupabaseClient } from '@/infrastructure/supabase/clients/browserSupabaseClient';
 import type { ItemCardItem } from '@/types/items';
 
 interface SupabaseItemRecord {

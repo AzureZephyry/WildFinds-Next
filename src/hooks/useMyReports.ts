@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { getCurrentProfileId } from "@/lib/supabase/auth";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import { getCurrentProfileId } from "@/infrastructure/supabase/authentication/supabaseAuthentication";
+import { getSupabaseClient } from "@/infrastructure/supabase/clients/browserSupabaseClient";
 import type { MyReportItem } from "@/types/myReports";
 
 interface ReportRecord {
