@@ -26,7 +26,7 @@ export function isValidPhone(value: string) {
   return PHONE_PATTERN.test(String(value).trim());
 }
 
-export function validateReport(values: ReportValidationValues) {
+export function validateReportForm(values: ReportValidationValues) {
   const errors: Record<string, string> = {};
 
   if (!values.itemName.trim()) {

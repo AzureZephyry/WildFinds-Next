@@ -1,31 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from "react";
 
-interface ImageUploaderProps {
+interface ReportImageUploaderProps {
   imageFile: File | null;
+  previewUrl?: string;
   onFileChange: (file: File | null) => void;
   errorMessage?: string;
 }
 
-export default function ImageUploader({ imageFile, onFileChange, errorMessage }: ImageUploaderProps) {
-  const [previewUrl, setPreviewUrl] = useState('');
-
-  useEffect(() => {
-    if (!imageFile) {
-      setPreviewUrl('');
-      return;
-    }
-
-    const objectUrl = URL.createObjectURL(imageFile);
-    setPreviewUrl(objectUrl);
-
-    return () => {
-      URL.revokeObjectURL(objectUrl);
-    };
-  }, [imageFile]);
-
-  const acceptedFileTypes = useMemo(() => ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'], []);
+export default function ReportImageUploader({ imageFile, previewUrl, onFileChange, errorMessage }: ReportImageUploaderProps) {
+  const acceptedFileTypes = useMemo(() => ["image/jpeg", "image/jpg", "image/png", "image/webp"], []);
 
   return (
     <div className="image-uploader">
@@ -39,10 +24,10 @@ export default function ImageUploader({ imageFile, onFileChange, errorMessage }:
 
       <div className="image-uploader__controls">
         <label className="image-upload-button">
-          {imageFile ? 'Change image' : 'Upload image'}
+          {imageFile ? "Change image" : "Upload image"}
           <input
             type="file"
-            accept={acceptedFileTypes.join(',')}
+            accept={acceptedFileTypes.join(",")}
             onChange={(event) => onFileChange(event.target.files?.[0] || null)}
           />
         </label>

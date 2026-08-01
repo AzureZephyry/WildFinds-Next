@@ -1,4 +1,4 @@
-export const BUILDING_OPTIONS = [
+export const reportBuildingOptions = [
   "GLE Building",
   "Acad Building",
   "Allied Building",

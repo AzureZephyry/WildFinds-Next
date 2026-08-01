@@ -1,38 +1,40 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import FormField from './FormField';
-import ImageUploader from './ImageUploader';
-import ValidationMessage from './ValidationMessage';
-import { BUILDING_OPTIONS } from '../data/buildingOptions';
-import { getItemCategories } from '../utils/reportUtils';
-import { validateReport } from '../utils/validation';
-import type { ReportFormErrors, ReportFormProps, ReportFormValues, ReportSubmissionPayload } from '../types/reports';
-import { supabase } from '@/infrastructure/supabase/clients/browserSupabaseClient';
-import { getCurrentProfileId } from '@/infrastructure/supabase/authentication/supabaseAuthentication';
-import { useAuth } from '@/core/authentication/components/AuthenticationProvider';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/core/authentication/components/AuthenticationProvider";
+import { getCurrentProfileId } from "@/infrastructure/supabase/authentication/supabaseAuthentication";
+import { supabase } from "@/infrastructure/supabase/clients/browserSupabaseClient";
+import FormField from "@/components/FormField";
+import ReportImageUploader from "@/features/reports/submission/components/ReportImageUploader";
+import ReportSubmissionResult from "@/features/reports/submission/components/ReportSubmissionResult";
+import ReportValidationMessage from "@/features/reports/submission/components/ReportValidationMessage";
+import { reportBuildingOptions } from "@/features/reports/submission/configuration/reportBuildingOptions";
+import { reportCategoryOptions } from "@/features/reports/submission/configuration/reportCategoryOptions";
+import type { ReportFormErrors, ReportFormProps, ReportFormValues } from "@/features/reports/submission/models/reportFormModels";
+import type { ReportSubmissionPayload } from "@/features/reports/submission/models/reportSubmissionModels";
+import { validateReportForm } from "@/features/reports/submission/validation/validateReportForm";
 
 const INITIAL_STATE: ReportFormValues = {
-  itemName: '',
-  reporterName: '',
-  category: 'ID / Access',
-  location: '',
-  building: '',
-  dateReported: new Date().toISOString().split('T')[0],
+  itemName: "",
+  reporterName: "",
+  category: "ID / Access",
+  location: "",
+  building: "",
+  dateReported: new Date().toISOString().split("T")[0],
   timeReported: new Date().toISOString().slice(11, 16),
-  brand: '',
-  color: '',
-  identifyingMarks: '',
-  description: '',
-  contactNumber: '',
-  email: '',
+  brand: "",
+  color: "",
+  identifyingMarks: "",
+  description: "",
+  contactNumber: "",
+  email: "",
   imageFile: null,
-  imagePreviewUrl: '',
+  imagePreviewUrl: "",
 };
 
 function getSupabaseErrorMessage(error: unknown, fallback: string): string {
-  if (typeof error !== 'object' || error === null) {
+  if (typeof error !== "object" || error === null) {
     return fallback;
   }
 
@@ -44,31 +46,31 @@ function getSupabaseErrorMessage(error: unknown, fallback: string): string {
   };
 
   const parts = [
-    typeof maybeError.message === 'string' ? maybeError.message : undefined,
-    typeof maybeError.details === 'string' ? maybeError.details : undefined,
-    typeof maybeError.hint === 'string' ? maybeError.hint : undefined,
-    typeof maybeError.code === 'string' ? `code: ${maybeError.code}` : undefined,
+    typeof maybeError.message === "string" ? maybeError.message : undefined,
+    typeof maybeError.details === "string" ? maybeError.details : undefined,
+    typeof maybeError.hint === "string" ? maybeError.hint : undefined,
+    typeof maybeError.code === "string" ? `code: ${maybeError.code}` : undefined,
   ].filter((value): value is string => Boolean(value && value.trim().length > 0));
 
-  return parts.length > 0 ? parts.join(' · ') : fallback;
+  return parts.length > 0 ? parts.join(" · ") : fallback;
 }
 
 type SubmissionStep =
-  | 'auth-session'
-  | 'profile-lookup'
-  | 'image-upload'
-  | 'reference-generation'
-  | 'item-insert'
-  | 'item-fetch'
-  | 'report-insert'
-  | 'unexpected';
+  | "auth-session"
+  | "profile-lookup"
+  | "image-upload"
+  | "reference-generation"
+  | "item-insert"
+  | "item-fetch"
+  | "report-insert"
+  | "unexpected";
 
 function logSubmissionError(step: SubmissionStep, error: unknown) {
-  const maybeError = typeof error === 'object' && error !== null
+  const maybeError = typeof error === "object" && error !== null
     ? error as { code?: unknown; message?: unknown; details?: unknown; hint?: unknown; status?: unknown }
     : {};
 
-  console.error('[WildFinds] Report submission failed', {
+  console.error("[WildFinds] Report submission failed", {
     step,
     code: maybeError.code,
     message: maybeError.message,
@@ -79,7 +81,7 @@ function logSubmissionError(step: SubmissionStep, error: unknown) {
   });
 }
 
-export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
+export default function ReportSubmissionForm({ reportType, onSubmit, successExplanation }: ReportFormProps) {
   const router = useRouter();
   const { session, isLoading: isAuthLoading } = useAuth();
   const [values, setValues] = useState<ReportFormValues>(INITIAL_STATE);
@@ -87,11 +89,22 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [lastSubmitTime, setLastSubmitTime] = useState(0);
+  const [submittedPayload, setSubmittedPayload] = useState<ReportSubmissionPayload | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
 
   const setField = (name: keyof ReportFormValues, value: string | File | null) => {
     setValues((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: undefined }));
   };
+
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (isAuthLoading) {
@@ -103,7 +116,7 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
         setValues(INITIAL_STATE);
         setErrors({});
         setIsSubmitting(false);
-        setAuthMessage('Please log in to submit a report.');
+        setAuthMessage("Please log in to submit a report.");
       }, 0);
       router.replace(`/login?redirect=/report/${reportType}`);
 
@@ -112,17 +125,21 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
   }, [isAuthLoading, reportType, router, session]);
 
   const handleImageChange = (file: File | null) => {
-    setField('imageFile', file);
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+
+    setField("imageFile", file);
+
     if (!file) {
-      setField('imagePreviewUrl', '');
+      setField("imagePreviewUrl", "");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setField('imagePreviewUrl', String(reader.result || ''));
-    };
-    reader.readAsDataURL(file);
+    const objectUrl = URL.createObjectURL(file);
+    previewUrlRef.current = objectUrl;
+    setField("imagePreviewUrl", objectUrl);
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -132,7 +149,7 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
       return;
     }
 
-    const validationErrors = validateReport(values);
+    const validationErrors = validateReportForm(values);
     setErrors(validationErrors);
 
     if (Object.keys(validationErrors).length > 0) {
@@ -140,12 +157,12 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
     }
 
     if (isAuthLoading) {
-      setErrors((prev) => ({ ...prev, form: 'Please wait while we verify your account.' }));
+      setErrors((prev) => ({ ...prev, form: "Please wait while we verify your account." }));
       return;
     }
 
     if (!session) {
-      setAuthMessage('Please log in to submit a report.');
+      setAuthMessage("Please log in to submit a report.");
       router.replace(`/login?redirect=/report/${reportType}`);
       return;
     }
@@ -153,16 +170,16 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
     setIsSubmitting(true);
     setErrors((prev) => ({ ...prev, form: undefined }));
 
-    let step: SubmissionStep = 'unexpected';
+    let step: SubmissionStep = "unexpected";
 
     try {
       const client = supabase;
 
       if (!client) {
-        throw new Error('Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
+        throw new Error("Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
       }
 
-      step = 'auth-session';
+      step = "auth-session";
       const {
         data: { session: currentSession },
         error: sessionError,
@@ -173,36 +190,36 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
       }
 
       if (!currentSession) {
-        setAuthMessage('Your session has ended. Please log in again before submitting.');
+        setAuthMessage("Your session has ended. Please log in again before submitting.");
         router.replace(`/login?redirect=/report/${reportType}`);
-        throw new Error('Authentication is required to submit a report.');
+        throw new Error("Authentication is required to submit a report.");
       }
 
-      step = 'profile-lookup';
+      step = "profile-lookup";
       const profileId = await getCurrentProfileId();
 
       if (!profileId) {
-        setAuthMessage('Your account profile could not be found. Please sign in again and try submitting the report.');
+        setAuthMessage("Your account profile could not be found. Please sign in again and try submitting the report.");
         router.replace(`/login?redirect=/report/${reportType}`);
-        throw new Error('Your account profile could not be found.');
+        throw new Error("Your account profile could not be found.");
       }
 
       let imageUrl: string | null = null;
 
       if (values.imageFile) {
-        step = 'image-upload';
-        const safeFileName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${values.imageFile.name.replace(/\s+/g, '-').toLowerCase()}`;
-        const { error: uploadError } = await client.storage.from('item-images').upload(safeFileName, values.imageFile, {
-          cacheControl: '3600',
+        step = "image-upload";
+        const safeFileName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${values.imageFile.name.replace(/\s+/g, "-").toLowerCase()}`;
+        const { error: uploadError } = await client.storage.from("item-images").upload(safeFileName, values.imageFile, {
+          cacheControl: "3600",
           upsert: false,
         });
 
         if (uploadError) {
-          const uploadMessage = getSupabaseErrorMessage(uploadError, 'Image upload failed.');
+          const uploadMessage = getSupabaseErrorMessage(uploadError, "Image upload failed.");
           throw new Error(`Image upload failed: ${uploadMessage}`);
         }
 
-        const { data: publicUrlData } = client.storage.from('item-images').getPublicUrl(safeFileName);
+        const { data: publicUrlData } = client.storage.from("item-images").getPublicUrl(safeFileName);
         imageUrl = publicUrlData.publicUrl || null;
       }
 
@@ -210,25 +227,25 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
       let itemId: string | null = null;
 
       for (let attempt = 0; attempt < 3; attempt += 1) {
-        step = 'reference-generation';
-        const { data: generatedReference, error: referenceError } = await client.rpc('generate_reference_number', {
+        step = "reference-generation";
+        const { data: generatedReference, error: referenceError } = await client.rpc("generate_reference_number", {
           report_type: reportType,
           report_date: values.dateReported,
         });
 
         if (referenceError) {
-          const referenceMessage = getSupabaseErrorMessage(referenceError, 'Unable to generate reference number.');
+          const referenceMessage = getSupabaseErrorMessage(referenceError, "Unable to generate reference number.");
           throw new Error(`Unable to generate reference number: ${referenceMessage}`);
         }
 
-        if (typeof generatedReference !== 'string' || generatedReference.trim().length === 0) {
-          throw new Error('Unable to generate reference number: the database returned an empty value.');
+        if (typeof generatedReference !== "string" || generatedReference.trim().length === 0) {
+          throw new Error("Unable to generate reference number: the database returned an empty value.");
         }
 
         referenceNumber = generatedReference;
 
-        step = 'item-insert';
-        const { error: itemInsertError } = await client.from('items').insert({
+        step = "item-insert";
+        const { error: itemInsertError } = await client.from("items").insert({
           reference_number: referenceNumber,
           type: reportType,
           name: values.itemName,
@@ -242,27 +259,27 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
           date_reported: values.dateReported,
           time_reported: values.timeReported,
           image_url: imageUrl,
-          status: 'submitted',
+          status: "submitted",
         });
 
         if (itemInsertError) {
-          const itemErrorMessage = getSupabaseErrorMessage(itemInsertError, 'Unable to create item record.');
-          if (itemInsertError.code === '23505' && itemInsertError.message.includes('reference_number')) {
+          const itemErrorMessage = getSupabaseErrorMessage(itemInsertError, "Unable to create item record.");
+          if (itemInsertError.code === "23505" && itemInsertError.message.includes("reference_number")) {
             continue;
           }
 
           throw new Error(`Unable to create item record: ${itemErrorMessage}`);
         }
 
-        step = 'item-fetch';
+        step = "item-fetch";
         const { data: insertedItem, error: itemFetchError } = await client
-          .from('items')
-          .select('id')
-          .eq('reference_number', referenceNumber)
+          .from("items")
+          .select("id")
+          .eq("reference_number", referenceNumber)
           .maybeSingle<{ id: string }>();
 
         if (itemFetchError) {
-          throw new Error(`Unable to load the created item: ${getSupabaseErrorMessage(itemFetchError, 'Unknown item fetch error.')}`);
+          throw new Error(`Unable to load the created item: ${getSupabaseErrorMessage(itemFetchError, "Unknown item fetch error.")}`);
         }
 
         if (!insertedItem?.id) {
@@ -274,17 +291,17 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
       }
 
       if (!referenceNumber || !itemId) {
-        throw new Error('Unable to create item record.');
+        throw new Error("Unable to create item record.");
       }
 
-      step = 'report-insert';
-      console.log('[WildFinds] Report ownership insert', {
+      step = "report-insert";
+      console.log("[WildFinds] Report ownership insert", {
         itemId,
         profileId,
         sessionUserId: currentSession.user.id,
       });
 
-      const { error: reportError } = await client.from('reports').insert({
+      const { error: reportError } = await client.from("reports").insert({
         item_id: itemId,
         profile_id: profileId,
         reporter_name: values.reporterName,
@@ -293,7 +310,7 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
       });
 
       if (reportError) {
-        const reportMessage = getSupabaseErrorMessage(reportError, 'Unable to save report.');
+        const reportMessage = getSupabaseErrorMessage(reportError, "Unable to save report.");
         throw new Error(`Unable to save report: ${reportMessage}`);
       }
 
@@ -312,23 +329,30 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
         description: values.description,
         contactNumber: values.contactNumber,
         email: values.email,
-        imageUrl: imageUrl || '',
-        status: 'submitted',
+        imageUrl: imageUrl || "",
+        status: "submitted",
         type: reportType,
       };
 
       onSubmit(payload);
       setLastSubmitTime(Date.now());
+      setSubmittedPayload(payload);
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
+      }
       setValues(INITIAL_STATE);
+      setErrors({});
+      setAuthMessage(null);
     } catch (error) {
       logSubmissionError(step, error);
-      setErrors((prev) => ({ ...prev, form: 'Unable to save your report right now. Please try again.' }));
+      setErrors((prev) => ({ ...prev, form: "Unable to save your report right now. Please try again." }));
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const categories = useMemo(() => getItemCategories(), []);
+  const categories = useMemo(() => reportCategoryOptions, []);
 
   if (isAuthLoading) {
     return <div className="section-panel" aria-live="polite">Checking your account...</div>;
@@ -337,7 +361,19 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
   if (!session) {
     return (
       <div className="section-panel" aria-live="polite">
-        <p className="validation-message">{authMessage || 'Please log in to submit a report.'}</p>
+        <p className="validation-message">{authMessage || "Please log in to submit a report."}</p>
+      </div>
+    );
+  }
+
+  if (submittedPayload) {
+    return (
+      <div>
+        <ReportSubmissionResult
+          referenceNumber={submittedPayload.referenceNumber}
+          status={submittedPayload.status}
+          nextStep={successExplanation || "Keep an eye on your report and check the home page for matching submissions."}
+        />
       </div>
     );
   }
@@ -351,12 +387,12 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
             id="itemName"
             type="text"
             value={values.itemName}
-            onChange={(e) => setField('itemName', e.target.value)}
+            onChange={(e) => setField("itemName", e.target.value)}
             placeholder="e.g. Student ID card"
             maxLength={80}
             required
           />
-          <ValidationMessage message={errors.itemName} />
+          <ReportValidationMessage message={errors.itemName} />
         </FormField>
 
         <FormField label="Reporter name" htmlFor="reporterName">
@@ -364,19 +400,19 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
             id="reporterName"
             type="text"
             value={values.reporterName}
-            onChange={(e) => setField('reporterName', e.target.value)}
+            onChange={(e) => setField("reporterName", e.target.value)}
             placeholder="e.g. Maria Santos"
             maxLength={80}
             required
           />
-          <ValidationMessage message={errors.reporterName} />
+          <ReportValidationMessage message={errors.reporterName} />
         </FormField>
 
         <FormField label="Category" htmlFor="category">
           <select
             id="category"
             value={values.category}
-            onChange={(e) => setField('category', e.target.value)}
+            onChange={(e) => setField("category", e.target.value)}
             required
           >
             {categories.map((option) => (
@@ -385,7 +421,7 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
               </option>
             ))}
           </select>
-          <ValidationMessage message={errors.category} />
+          <ReportValidationMessage message={errors.category} />
         </FormField>
 
         <FormField label="Location" htmlFor="location">
@@ -393,29 +429,29 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
             id="location"
             type="text"
             value={values.location}
-            onChange={(e) => setField('location', e.target.value)}
+            onChange={(e) => setField("location", e.target.value)}
             placeholder="e.g. Main Library"
             maxLength={80}
             required
           />
-          <ValidationMessage message={errors.location} />
+          <ReportValidationMessage message={errors.location} />
         </FormField>
 
         <FormField label="Building" htmlFor="building">
           <select
             id="building"
             value={values.building}
-            onChange={(e) => setField('building', e.target.value)}
+            onChange={(e) => setField("building", e.target.value)}
             required
           >
             <option value="">Select a building</option>
-            {BUILDING_OPTIONS.map((option) => (
+            {reportBuildingOptions.map((option) => (
               <option key={option} value={option}>
                 {option}
               </option>
             ))}
           </select>
-          <ValidationMessage message={errors.building} />
+          <ReportValidationMessage message={errors.building} />
         </FormField>
 
         <FormField label="Date" htmlFor="dateReported">
@@ -423,10 +459,10 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
             id="dateReported"
             type="date"
             value={values.dateReported}
-            onChange={(e) => setField('dateReported', e.target.value)}
+            onChange={(e) => setField("dateReported", e.target.value)}
             required
           />
-          <ValidationMessage message={errors.dateReported} />
+          <ReportValidationMessage message={errors.dateReported} />
         </FormField>
 
         <FormField label="Time" htmlFor="timeReported">
@@ -434,10 +470,10 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
             id="timeReported"
             type="time"
             value={values.timeReported}
-            onChange={(e) => setField('timeReported', e.target.value)}
+            onChange={(e) => setField("timeReported", e.target.value)}
             required
           />
-          <ValidationMessage message={errors.timeReported} />
+          <ReportValidationMessage message={errors.timeReported} />
         </FormField>
 
         <FormField label="Brand" htmlFor="brand">
@@ -445,12 +481,12 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
             id="brand"
             type="text"
             value={values.brand}
-            onChange={(e) => setField('brand', e.target.value)}
+            onChange={(e) => setField("brand", e.target.value)}
             placeholder="e.g. Samsung"
             maxLength={40}
             required
           />
-          <ValidationMessage message={errors.brand} />
+          <ReportValidationMessage message={errors.brand} />
         </FormField>
 
         <FormField label="Color" htmlFor="color">
@@ -458,34 +494,34 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
             id="color"
             type="text"
             value={values.color}
-            onChange={(e) => setField('color', e.target.value)}
+            onChange={(e) => setField("color", e.target.value)}
             placeholder="e.g. Black"
             maxLength={30}
             required
           />
-          <ValidationMessage message={errors.color} />
+          <ReportValidationMessage message={errors.color} />
         </FormField>
 
         <FormField label="Identifying marks" htmlFor="identifyingMarks">
           <textarea
             id="identifyingMarks"
             value={values.identifyingMarks}
-            onChange={(e) => setField('identifyingMarks', e.target.value)}
+            onChange={(e) => setField("identifyingMarks", e.target.value)}
             placeholder="Describe scratches, labels, or engravings"
             maxLength={120}
           />
-          <ValidationMessage message={errors.identifyingMarks} />
+          <ReportValidationMessage message={errors.identifyingMarks} />
         </FormField>
 
         <FormField label="Description" htmlFor="description">
           <textarea
             id="description"
             value={values.description}
-            onChange={(e) => setField('description', e.target.value)}
+            onChange={(e) => setField("description", e.target.value)}
             placeholder="Add any extra information"
             maxLength={280}
           />
-          <ValidationMessage message={errors.description} />
+          <ReportValidationMessage message={errors.description} />
         </FormField>
       </div>
 
@@ -495,11 +531,11 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
             id="contactNumber"
             type="tel"
             value={values.contactNumber}
-            onChange={(e) => setField('contactNumber', e.target.value)}
+            onChange={(e) => setField("contactNumber", e.target.value)}
             placeholder="e.g. +1234567890"
             required
           />
-          <ValidationMessage message={errors.contactNumber} />
+          <ReportValidationMessage message={errors.contactNumber} />
         </FormField>
 
         <FormField label="Email" htmlFor="email">
@@ -507,16 +543,17 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
             id="email"
             type="email"
             value={values.email}
-            onChange={(e) => setField('email', e.target.value)}
+            onChange={(e) => setField("email", e.target.value)}
             placeholder="e.g. student@example.com"
             required
           />
-          <ValidationMessage message={errors.email} />
+          <ReportValidationMessage message={errors.email} />
         </FormField>
       </div>
 
-      <ImageUploader
+      <ReportImageUploader
         imageFile={values.imageFile}
+        previewUrl={values.imagePreviewUrl}
         onFileChange={handleImageChange}
         errorMessage={errors.imageFile}
       />
@@ -524,7 +561,7 @@ export default function ReportForm({ reportType, onSubmit }: ReportFormProps) {
       <div className="form-actions">
         {errors.form ? <p className="validation-message">{errors.form}</p> : null}
         <button type="submit" className="primary-button" disabled={isSubmitting || isAuthLoading}>
-          {isSubmitting ? 'Submitting...' : 'Submit Report'}
+          {isSubmitting ? "Submitting..." : "Submit Report"}
         </button>
       </div>
     </form>
