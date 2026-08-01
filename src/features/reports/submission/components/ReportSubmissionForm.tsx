@@ -11,32 +11,14 @@ import ReportSubmissionResult from "@/features/reports/submission/components/Rep
 import ReportValidationMessage from "@/features/reports/submission/components/ReportValidationMessage";
 import { reportBuildingOptions } from "@/features/reports/submission/configuration/reportBuildingOptions";
 import { reportCategoryOptions } from "@/features/reports/submission/configuration/reportCategoryOptions";
+import { createOwnedReport } from "@/features/reports/submission/commands/createOwnedReport";
+import { createReportedItem } from "@/features/reports/submission/commands/createReportedItem";
 import { useReportSubmissionForm } from "@/features/reports/submission/hooks/useReportSubmissionForm";
 import type { ReportFormProps } from "@/features/reports/submission/models/reportFormModels";
 import type { ReportSubmissionPayload } from "@/features/reports/submission/models/reportSubmissionModels";
+import { findCreatedReportedItem } from "@/features/reports/submission/queries/findCreatedReportedItem";
+import { generateReportReferenceNumber } from "@/features/reports/submission/reference/generateReportReferenceNumber";
 import { uploadReportImage } from "@/features/reports/submission/storage/uploadReportImage";
-
-function getSupabaseErrorMessage(error: unknown, fallback: string): string {
-  if (typeof error !== "object" || error === null) {
-    return fallback;
-  }
-
-  const maybeError = error as {
-    message?: unknown;
-    details?: unknown;
-    hint?: unknown;
-    code?: unknown;
-  };
-
-  const parts = [
-    typeof maybeError.message === "string" ? maybeError.message : undefined,
-    typeof maybeError.details === "string" ? maybeError.details : undefined,
-    typeof maybeError.hint === "string" ? maybeError.hint : undefined,
-    typeof maybeError.code === "string" ? `code: ${maybeError.code}` : undefined,
-  ].filter((value): value is string => Boolean(value && value.trim().length > 0));
-
-  return parts.length > 0 ? parts.join(" · ") : fallback;
-}
 
 type SubmissionStep =
   | "auth-session"
@@ -190,65 +172,35 @@ export default function ReportSubmissionForm({ reportType, onSubmit, successExpl
 
       for (let attempt = 0; attempt < 3; attempt += 1) {
         step = "reference-generation";
-        const { data: generatedReference, error: referenceError } = await client.rpc("generate_reference_number", {
-          report_type: reportType,
-          report_date: values.dateReported,
-        });
-
-        if (referenceError) {
-          const referenceMessage = getSupabaseErrorMessage(referenceError, "Unable to generate reference number.");
-          throw new Error(`Unable to generate reference number: ${referenceMessage}`);
-        }
-
-        if (typeof generatedReference !== "string" || generatedReference.trim().length === 0) {
-          throw new Error("Unable to generate reference number: the database returned an empty value.");
-        }
-
-        referenceNumber = generatedReference;
+        referenceNumber = await generateReportReferenceNumber(client, reportType, values.dateReported);
 
         step = "item-insert";
-        const { error: itemInsertError } = await client.from("items").insert({
-          reference_number: referenceNumber,
-          type: reportType,
-          name: values.itemName,
-          category: values.category,
-          description: values.description || null,
-          brand: values.brand,
-          color: values.color,
-          identifying_marks: values.identifyingMarks || null,
-          building: values.building,
-          location: values.location,
-          date_reported: values.dateReported,
-          time_reported: values.timeReported,
-          image_url: imageUrl,
-          status: "submitted",
-        });
-
-        if (itemInsertError) {
-          const itemErrorMessage = getSupabaseErrorMessage(itemInsertError, "Unable to create item record.");
-          if (itemInsertError.code === "23505" && itemInsertError.message.includes("reference_number")) {
+        try {
+          await createReportedItem(client, {
+            referenceNumber,
+            reportType,
+            itemName: values.itemName,
+            category: values.category,
+            description: values.description,
+            brand: values.brand,
+            color: values.color,
+            identifyingMarks: values.identifyingMarks,
+            building: values.building,
+            location: values.location,
+            dateReported: values.dateReported,
+            timeReported: values.timeReported,
+            imageUrl,
+          });
+        } catch (error) {
+          if (error instanceof Error && error.message === "RETRY_REFERENCE_NUMBER") {
             continue;
           }
-
-          throw new Error(`Unable to create item record: ${itemErrorMessage}`);
+          throw error;
         }
 
         step = "item-fetch";
-        const { data: insertedItem, error: itemFetchError } = await client
-          .from("items")
-          .select("id")
-          .eq("reference_number", referenceNumber)
-          .maybeSingle<{ id: string }>();
-
-        if (itemFetchError) {
-          throw new Error(`Unable to load the created item: ${getSupabaseErrorMessage(itemFetchError, "Unknown item fetch error.")}`);
-        }
-
-        if (!insertedItem?.id) {
-          throw new Error(`Unable to load the created item for reference ${referenceNumber}.`);
-        }
-
-        itemId = insertedItem.id;
+        const createdItem = await findCreatedReportedItem(client, { referenceNumber });
+        itemId = createdItem.id;
         break;
       }
 
@@ -263,18 +215,13 @@ export default function ReportSubmissionForm({ reportType, onSubmit, successExpl
         sessionUserId: currentSession.user.id,
       });
 
-      const { error: reportError } = await client.from("reports").insert({
-        item_id: itemId,
-        profile_id: profileId,
-        reporter_name: values.reporterName,
+      await createOwnedReport(client, {
+        itemId,
+        profileId,
+        reporterName: values.reporterName,
         email: values.email,
-        contact_number: values.contactNumber,
+        contactNumber: values.contactNumber,
       });
-
-      if (reportError) {
-        const reportMessage = getSupabaseErrorMessage(reportError, "Unable to save report.");
-        throw new Error(`Unable to save report: ${reportMessage}`);
-      }
 
       const payload: ReportSubmissionPayload = {
         id: itemId,
