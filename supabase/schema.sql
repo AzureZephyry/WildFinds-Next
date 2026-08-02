@@ -74,16 +74,47 @@ create table if not exists public.reports (
 
 create index if not exists idx_reports_profile_id on public.reports (profile_id);
 
+create unique index if not exists idx_reports_id_item_id_uq on public.reports (id, item_id);
+
 create table if not exists public.claims (
   id uuid primary key default gen_random_uuid(),
   item_id uuid not null references public.items (id) on delete cascade,
+  source_report_id uuid,
+  claimant_profile_id uuid references public.profiles (id) on delete set null,
   claimant_name text not null,
   contact_info text not null,
   details text not null,
   status text not null default 'submitted' check (status in ('submitted', 'pending_review', 'approved', 'rejected', 'withdrawn')),
+  reviewed_by_profile_id uuid references public.profiles (id) on delete set null,
+  review_notes text,
   created_at timestamptz not null default now(),
   reviewed_at timestamptz
 );
+
+create index if not exists idx_claims_item_id on public.claims (item_id);
+create index if not exists idx_claims_source_report_id on public.claims (source_report_id);
+create index if not exists idx_claims_claimant_profile_id on public.claims (claimant_profile_id);
+create index if not exists idx_claims_status on public.claims (status);
+create index if not exists idx_claims_reviewed_by_profile_id on public.claims (reviewed_by_profile_id);
+
+create unique index if not exists idx_claims_active_unique
+on public.claims (item_id, claimant_profile_id)
+where status in ('submitted', 'pending_review') and claimant_profile_id is not null;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.claims'::regclass
+      and conname = 'claims_source_report_item_fkey'
+  ) then
+    alter table public.claims
+      add constraint claims_source_report_item_fkey
+      foreign key (source_report_id, item_id) references public.reports (id, item_id) on delete restrict;
+  end if;
+end
+$$;
 
 create table if not exists public.matches (
   id uuid primary key default gen_random_uuid(),
@@ -138,6 +169,92 @@ $$;
 
 grant execute on function public.generate_reference_number(text, date) to anon, authenticated;
 
+create or replace function public.is_claim_submission_eligible(p_item_id uuid, p_source_report_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid;
+  source_report_record record;
+  item_record record;
+begin
+  current_user_id := auth.uid();
+
+  if current_user_id is null or p_item_id is null or p_source_report_id is null then
+    return false;
+  end if;
+
+  if not exists (
+    select 1
+    from public.profiles p
+    where p.id = current_user_id
+  ) then
+    return false;
+  end if;
+
+  if not exists (
+    select 1
+    from public.reports r
+    where r.id = p_source_report_id
+  ) then
+    return false;
+  end if;
+
+  select id, item_id, profile_id
+  into source_report_record
+  from public.reports
+  where id = p_source_report_id;
+
+  if source_report_record.item_id is distinct from p_item_id then
+    return false;
+  end if;
+
+  if source_report_record.profile_id is null or source_report_record.profile_id = current_user_id then
+    return false;
+  end if;
+
+  select id, type, status
+  into item_record
+  from public.items
+  where id = p_item_id;
+
+  if not found then
+    return false;
+  end if;
+
+  if item_record.type is distinct from 'found' then
+    return false;
+  end if;
+
+  if item_record.status not in ('submitted', 'active') then
+    return false;
+  end if;
+
+  if not exists (
+    select 1
+    from public.claims c
+    where c.item_id = p_item_id
+      and c.claimant_profile_id = current_user_id
+      and c.status = 'submitted'
+  ) and not exists (
+    select 1
+    from public.claims c
+    where c.item_id = p_item_id
+      and c.claimant_profile_id = current_user_id
+      and c.status = 'pending_review'
+  ) then
+    return true;
+  end if;
+
+  return false;
+end;
+$$;
+
+revoke all on function public.is_claim_submission_eligible(uuid, uuid) from public;
+grant execute on function public.is_claim_submission_eligible(uuid, uuid) to authenticated;
+
 revoke all privileges on table public.profiles from anon;
 revoke all privileges on table public.profiles from authenticated;
 grant select on table public.profiles to authenticated;
@@ -153,6 +270,10 @@ revoke insert on table public.items from authenticated;
 revoke select on table public.items from authenticated;
 grant select (id, reference_number, type, name, category, description, brand, color, building, location, date_reported, time_reported, image_url, status, created_at, updated_at, resolved_at) on table public.items to anon, authenticated;
 grant insert on table public.items to authenticated;
+
+revoke all privileges on table public.claims from anon;
+revoke all privileges on table public.claims from authenticated;
+grant insert, select on table public.claims to authenticated;
 
 create or replace function public.update_updated_at_column()
 returns trigger as $$
@@ -272,6 +393,42 @@ using (
   )
 );
 
-create policy "Allow public insert access to claims" on public.claims
+drop policy if exists "Allow public insert access to claims" on public.claims;
+
+drop policy if exists "Authenticated users can insert claims" on public.claims;
+drop policy if exists "Authenticated users can read own claims" on public.claims;
+drop policy if exists "Moderators and admins can access all claims" on public.claims;
+
+create policy "Authenticated users can insert claims" on public.claims
 for insert
-with check (true);
+to authenticated
+with check (
+  claimant_profile_id is not null and
+  claimant_profile_id = auth.uid() and
+  source_report_id is not null and
+  status = 'submitted' and
+  reviewed_by_profile_id is null and
+  review_notes is null and
+  reviewed_at is null and
+  public.is_claim_submission_eligible(item_id, source_report_id)
+);
+
+create policy "Authenticated users can read own claims" on public.claims
+for select
+to authenticated
+using (
+  claimant_profile_id is not null and
+  claimant_profile_id = auth.uid()
+);
+
+create policy "Moderators and admins can access all claims" on public.claims
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.profiles p
+    where p.id = auth.uid()
+      and p.role in ('moderator', 'admin', 'owner')
+  )
+);
