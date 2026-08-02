@@ -67,6 +67,7 @@ create table if not exists public.reports (
   reporter_name text not null,
   email text not null,
   contact_number text not null,
+  verification_details text,
   submitted_at timestamptz not null default now(),
   review_status text not null default 'pending' check (review_status in ('pending', 'approved', 'rejected'))
 );
@@ -137,6 +138,22 @@ $$;
 
 grant execute on function public.generate_reference_number(text, date) to anon, authenticated;
 
+revoke all privileges on table public.profiles from anon;
+revoke all privileges on table public.profiles from authenticated;
+grant select on table public.profiles to authenticated;
+grant update (full_name) on table public.profiles to authenticated;
+
+revoke all privileges on table public.reports from anon;
+revoke all privileges on table public.reports from authenticated;
+grant insert, select on table public.reports to authenticated;
+
+revoke insert on table public.items from anon;
+revoke select on table public.items from anon;
+revoke insert on table public.items from authenticated;
+revoke select on table public.items from authenticated;
+grant select (id, reference_number, type, name, category, description, brand, color, building, location, date_reported, time_reported, image_url, status, created_at, updated_at, resolved_at) on table public.items to anon, authenticated;
+grant insert on table public.items to authenticated;
+
 create or replace function public.update_updated_at_column()
 returns trigger as $$
 begin
@@ -185,7 +202,7 @@ create policy "Allow public read access to visible items" on public.items
 for select
 using (status = 'submitted' or status = 'active' or status = 'matched');
 
-create policy "Authenticated users can insert items" on public.items
+create policy "Authenticated users can insert submitted items" on public.items
 for insert
 to authenticated
 with check (status = 'submitted');

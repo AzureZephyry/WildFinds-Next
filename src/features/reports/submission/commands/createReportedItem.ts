@@ -31,7 +31,6 @@ export interface CreateReportedItemInput {
   description: string;
   brand: string;
   color: string;
-  identifyingMarks: string;
   building: string;
   location: string;
   dateReported: string;
@@ -51,7 +50,6 @@ export async function createReportedItem(
     description: input.description || null,
     brand: input.brand,
     color: input.color,
-    identifying_marks: input.identifyingMarks || null,
     building: input.building,
     location: input.location,
     date_reported: input.dateReported,

@@ -53,12 +53,6 @@ export default function ItemDetailSummary({ item }: ItemDetailSummaryProps) {
             <span className="detail-value">{item.color}</span>
           </div>
         ) : null}
-        {item.identifyingMarks ? (
-          <div className="detail-row">
-            <span className="detail-label">Identifying marks</span>
-            <span className="detail-value">{item.identifyingMarks}</span>
-          </div>
-        ) : null}
         <div className="detail-row">
           <span className="detail-label">Status</span>
           <span className="detail-value item-details-status">{item.status}</span>

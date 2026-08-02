@@ -10,7 +10,6 @@ export interface ItemDetailViewModel {
   description?: string;
   brand?: string;
   color?: string;
-  identifyingMarks?: string;
   building?: string;
   location: string;
   dateReported: string;

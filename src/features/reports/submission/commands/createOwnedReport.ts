@@ -28,6 +28,7 @@ export interface CreateOwnedReportInput {
   reporterName: string;
   email: string;
   contactNumber: string;
+  verificationDetails?: string | null;
 }
 
 export async function createOwnedReport(
@@ -40,6 +41,7 @@ export async function createOwnedReport(
     reporter_name: input.reporterName,
     email: input.email,
     contact_number: input.contactNumber,
+    verification_details: input.verificationDetails?.trim() ? input.verificationDetails.trim() : null,
   });
 
   if (reportError) {

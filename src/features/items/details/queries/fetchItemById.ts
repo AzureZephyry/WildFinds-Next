@@ -10,7 +10,7 @@ export async function fetchItemById(itemId: string): Promise<ItemDatabaseRecord 
 
   const { data, error } = await client
     .from("items")
-    .select("id, reference_number, type, name, category, description, brand, color, identifying_marks, building, location, date_reported, time_reported, image_url, status, created_at, resolved_at")
+    .select("id, reference_number, type, name, category, description, brand, color, building, location, date_reported, time_reported, image_url, status, created_at, resolved_at")
     .eq("id", itemId)
     .maybeSingle<ItemDatabaseRecord>();
 

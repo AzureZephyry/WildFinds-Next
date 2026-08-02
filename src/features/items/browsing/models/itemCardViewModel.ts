@@ -14,5 +14,4 @@ export interface ItemCardViewModel {
   description?: string;
   brand?: string;
   color?: string;
-  identifyingMarks?: string;
 }

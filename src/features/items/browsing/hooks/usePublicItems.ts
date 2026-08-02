@@ -33,7 +33,7 @@ export function usePublicItems(): UsePublicItemsResult {
       try {
         const { data, error: queryError } = await client
           .from('items')
-          .select('id, reference_number, type, name, category, description, brand, color, identifying_marks, building, location, date_reported, time_reported, image_url, status')
+          .select('id, reference_number, type, name, category, description, brand, color, building, location, date_reported, time_reported, image_url, status')
           .in('status', ['submitted', 'active', 'matched'])
           .order('created_at', { ascending: false });
 

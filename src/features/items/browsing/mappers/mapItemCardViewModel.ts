@@ -16,6 +16,5 @@ export function mapItemCardViewModel(record: ItemDatabaseRecord): ItemCardViewMo
     description: record.description ?? undefined,
     brand: record.brand ?? undefined,
     color: record.color ?? undefined,
-    identifyingMarks: record.identifying_marks ?? undefined,
   };
 }

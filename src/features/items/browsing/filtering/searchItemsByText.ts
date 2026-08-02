@@ -18,7 +18,6 @@ export function searchItemsByText(items: ItemCardViewModel[], query: string) {
       item.color,
       item.description,
       item.building,
-      item.identifyingMarks,
     ];
 
     return searchableValues.some((value) => String(value || "").toLowerCase().includes(normalizedQuery));

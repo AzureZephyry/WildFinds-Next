@@ -62,7 +62,6 @@ export async function submitItemReport(input: SubmitItemReportInput): Promise<Re
         description: values.description,
         brand: values.brand,
         color: values.color,
-        identifyingMarks: values.identifyingMarks,
         building: values.building,
         location: values.location,
         dateReported: values.dateReported,
@@ -97,6 +96,7 @@ export async function submitItemReport(input: SubmitItemReportInput): Promise<Re
     reporterName: values.reporterName,
     email: values.email,
     contactNumber: values.contactNumber,
+    verificationDetails: values.identifyingMarks,
   });
 
   return {

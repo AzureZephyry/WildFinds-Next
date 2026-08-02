@@ -22,7 +22,6 @@ export function mapItemDetailViewModel(record: ItemDatabaseRecord): ItemDetailVi
     description: record.description ?? undefined,
     brand: record.brand ?? undefined,
     color: record.color ?? undefined,
-    identifyingMarks: record.identifying_marks ?? undefined,
     building: record.building ?? undefined,
     location: record.location ?? "Unknown location",
     dateReported: record.date_reported ?? "",

@@ -10,7 +10,6 @@ export interface ItemDatabaseRecord {
   description: string | null;
   brand: string | null;
   color: string | null;
-  identifying_marks: string | null;
   building: string | null;
   location: string | null;
   date_reported: string | null;
