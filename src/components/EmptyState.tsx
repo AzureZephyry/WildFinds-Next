@@ -1,4 +1,9 @@
-import type { EmptyStateProps } from "@/types/items";
+interface EmptyStateProps {
+  title: string;
+  message: string;
+  actionText?: string;
+  actionCallback?: () => void;
+}
 
 export default function EmptyState({ title, message, actionText, actionCallback }: EmptyStateProps) {
   return (
