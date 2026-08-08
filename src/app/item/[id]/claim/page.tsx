@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { fetchClaimSubmissionContext } from "@/features/claims/submission/queries/fetchClaimSubmissionContext";
@@ -145,8 +146,15 @@ export default async function ClaimItemPage({ params }: { params: { id: string }
 
         <div style={{ display: "grid", gap: 24 }}>
           {context.imageUrl ? (
-            <div style={{ borderRadius: 18, overflow: "hidden", minHeight: 220, background: "var(--surface-muted)" }}>
-              <img src={context.imageUrl} alt={context.itemName ?? "Claim item image"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <div style={{ position: "relative", borderRadius: 18, overflow: "hidden", minHeight: 220, background: "var(--surface-muted)" }}>
+              <Image
+                src={context.imageUrl}
+                alt={context.itemName ?? "Claim item image"}
+                fill
+                sizes="(max-width: 768px) 100vw, 760px"
+                style={{ objectFit: "cover" }}
+                unoptimized
+              />
             </div>
           ) : null}
 
