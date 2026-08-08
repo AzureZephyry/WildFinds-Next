@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { fetchClaimSubmissionContext } from "@/features/claims/submission/queries/fetchClaimSubmissionContext";
+import ClaimSubmissionForm from "./ClaimSubmissionForm";
 
 export const metadata: Metadata = {
   title: "Claim this item | WildFinds",
@@ -135,69 +136,70 @@ export default async function ClaimItemPage({ params }: { params: { id: string }
 
   return (
     <main className="page-content" style={{ padding: "32px 24px" }}>
-      <section className="detail-card" style={{ maxWidth: 760, margin: "0 auto" }}>
-        <div style={{ marginBottom: 24 }}>
+      <section className="detail-card" style={{ maxWidth: 760, margin: "0 auto", display: "grid", gap: 24 }}>
+        <div style={{ display: "grid", gap: 10 }}>
           <p className="text-muted">Claim this Item</p>
-          <h1 style={{ margin: "12px 0", fontSize: "2rem" }}>Claim this Item</h1>
+          <h1 style={{ margin: 0, fontSize: "2rem" }}>Claim this Item</h1>
           <p style={{ margin: 0, color: "var(--text-secondary)" }}>
-            Review the item details below before continuing.
+            Provide information that will help the Lost & Found Office verify ownership.
           </p>
         </div>
 
-        <div style={{ display: "grid", gap: 24 }}>
-          {context.imageUrl ? (
-            <div style={{ position: "relative", borderRadius: 18, overflow: "hidden", minHeight: 220, background: "var(--surface-muted)" }}>
-              <Image
-                src={context.imageUrl}
-                alt={context.itemName ?? "Claim item image"}
-                fill
-                sizes="(max-width: 768px) 100vw, 760px"
-                style={{ objectFit: "cover" }}
-                unoptimized
-              />
-            </div>
-          ) : null}
+        <div style={{ display: "grid", gap: 20 }}>
+          <div>
+            <p className="section-label" style={{ marginBottom: 10, fontWeight: 700 }}>Section A: Item Summary</p>
+            <div className="detail-card" style={{ padding: 24 }}>
+              <div style={{ display: "grid", gap: 20 }}>
+                {context.imageUrl ? (
+                  <div style={{ position: "relative", borderRadius: 18, overflow: "hidden", minHeight: 220, background: "var(--surface-muted)" }}>
+                    <Image
+                      src={context.imageUrl}
+                      alt={context.itemName ?? "Claim item image"}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 760px"
+                      style={{ objectFit: "cover" }}
+                      unoptimized
+                    />
+                  </div>
+                ) : null}
 
-          <div className="detail-card" style={{ padding: 24 }}>
-            <div style={{ display: "grid", gap: 12 }}>
-              <div>
-                <p className="text-muted">Reference Number</p>
-                <p style={{ margin: 4, fontWeight: 700 }}>{context.referenceNumber ?? "—"}</p>
-              </div>
-              <div>
-                <p className="text-muted">Item Name</p>
-                <p style={{ margin: 4, fontWeight: 700 }}>{context.itemName ?? "—"}</p>
-              </div>
-              <div>
-                <p className="text-muted">Category</p>
-                <p style={{ margin: 4, fontWeight: 700 }}>{context.category ?? "—"}</p>
-              </div>
-              <div>
-                <p className="text-muted">Brand</p>
-                <p style={{ margin: 4, fontWeight: 700 }}>{context.brand ?? "—"}</p>
-              </div>
-              <div>
-                <p className="text-muted">Building</p>
-                <p style={{ margin: 4, fontWeight: 700 }}>{context.building ?? "—"}</p>
-              </div>
-              <div>
-                <p className="text-muted">Location</p>
-                <p style={{ margin: 4, fontWeight: 700 }}>{context.location ?? "—"}</p>
-              </div>
-              <div>
-                <p className="text-muted">Date Reported</p>
-                <p style={{ margin: 4, fontWeight: 700 }}>{context.dateReported ?? "—"}</p>
+                <div style={{ display: "grid", gap: 14 }}>
+                  <div>
+                    <p className="text-muted">Reference Number</p>
+                    <p style={{ margin: 4, fontWeight: 700 }}>{context.referenceNumber ?? "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted">Item Name</p>
+                    <p style={{ margin: 4, fontWeight: 700 }}>{context.itemName ?? "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted">Category</p>
+                    <p style={{ margin: 4, fontWeight: 700 }}>{context.category ?? "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted">Brand</p>
+                    <p style={{ margin: 4, fontWeight: 700 }}>{context.brand ?? "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted">Building</p>
+                    <p style={{ margin: 4, fontWeight: 700 }}>{context.building ?? "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted">Location Found</p>
+                    <p style={{ margin: 4, fontWeight: 700 }}>{context.location ?? "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted">Date Reported</p>
+                    <p style={{ margin: 4, fontWeight: 700 }}>{context.dateReported ?? "—"}</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div style={{ display: "grid", gap: 14 }}>
-            <button type="button" className="primary-button" disabled>
-              Continue
-            </button>
-            <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: "0.95rem" }}>
-              Coming next: the claim submission flow will allow you to proceed from here.
-            </p>
+          <div>
+            <p className="section-label" style={{ marginBottom: 10, fontWeight: 700 }}>Section B: Claim Form</p>
+            <ClaimSubmissionForm />
           </div>
         </div>
       </section>
