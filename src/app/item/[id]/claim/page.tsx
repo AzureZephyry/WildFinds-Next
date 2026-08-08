@@ -199,7 +199,7 @@ export default async function ClaimItemPage({ params }: { params: { id: string }
 
           <div>
             <p className="section-label" style={{ marginBottom: 10, fontWeight: 700 }}>Section B: Claim Form</p>
-            <ClaimSubmissionForm />
+            <ClaimSubmissionForm context={context} />
           </div>
         </div>
       </section>

@@ -57,7 +57,11 @@ interface FormErrors {
 
 const MAX_CHARACTERS = 1000;
 
-export default function ClaimSubmissionForm() {
+import { useRouter } from "next/navigation";
+import { submitClaim } from "@/features/claims/submission/workflows/submitClaim";
+import type { ClaimSubmissionContext } from "@/features/claims/submission/models/claimSubmissionContext";
+
+export default function ClaimSubmissionForm({ context }: { context: ClaimSubmissionContext }) {
   const { session } = useAuth();
   const prefill = useMemo(() => getSessionPrefill(session), [session]);
   const [values, setValues] = useState<FormValues>({
@@ -73,6 +77,9 @@ export default function ClaimSubmissionForm() {
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const router = useRouter();
 
   const validate = () => {
     const nextErrors: FormErrors = {};
@@ -123,8 +130,7 @@ export default function ClaimSubmissionForm() {
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    if (isFormDisabled) {
+    if (isFormDisabled || isSubmitting) {
       return;
     }
 
@@ -135,7 +141,38 @@ export default function ClaimSubmissionForm() {
       return;
     }
 
-    setSubmitted(true);
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    (async () => {
+      try {
+        const result = await submitClaim({
+          itemId: context.itemId,
+          sourceReportId: context.sourceReportId,
+          claimantName: values.fullName,
+          contactInfo: values.contactNumber,
+          ownershipExplanation: values.ownershipExplanation,
+          verificationDetails: values.verificationDetails,
+          approximateDateLost: values.approximateDateLost || null,
+          approximateLocationLost: values.approximateLocationLost || null,
+          additionalNotes: values.additionalNotes || null,
+        });
+
+        setSubmitted(true);
+        // Navigate to success page with reference and meta
+        const params = new URLSearchParams();
+        params.set("ref", result.referenceNumber);
+        params.set("status", result.status);
+        params.set("date", new Date(result.createdAt).toISOString());
+
+        router.push(`/item/${context.itemId}/claim/success?${params.toString()}`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unable to submit claim.";
+        setSubmitError(message);
+      } finally {
+        setIsSubmitting(false);
+      }
+    })();
   };
 
   const ownershipCharacters = values.ownershipExplanation.length;
@@ -393,18 +430,12 @@ export default function ClaimSubmissionForm() {
               </div>
 
               <div style={{ display: "grid", gap: 10 }}>
-                <button type="submit" className="primary-button" disabled={isFormDisabled}>
-                  Submit Claim
+                <button type="submit" className="primary-button" disabled={isFormDisabled || isSubmitting}>
+                  {isSubmitting ? "Submitting..." : "Submit Claim"}
                 </button>
-                {submitted ? (
-                  <p className="site-note" style={{ margin: 0 }}>
-                    Claim submission will be connected in the next implementation batch.
-                  </p>
-                ) : (
-                  <p className="site-note" style={{ margin: 0 }}>
-                    This form is currently a placeholder. No claim is submitted yet.
-                  </p>
-                )}
+                {submitError ? (
+                  <p className="validation-message" role="alert" style={{ margin: 0 }}>{submitError}</p>
+                ) : null}
               </div>
             </div>
           </div>
