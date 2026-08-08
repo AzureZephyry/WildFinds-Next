@@ -103,11 +103,30 @@ export default function ItemDetailsScreen({ itemId }: ItemDetailsScreenProps) {
 
         <ItemDetailSummary item={item} />
 
-        <div className="detail-action">
-          <Link href="/" className="secondary-link">
-            Back to items
-          </Link>
-        </div>
+        {item.type === "found" && (item.status === "submitted" || item.status === "active") ? (
+          <div className="detail-card" style={{ marginTop: 16 }}>
+            <div style={{ display: "grid", gap: 12 }}>
+              <h2 style={{ margin: 0, fontSize: "1.25rem" }}>Think this is your item?</h2>
+              <p style={{ margin: 0, color: "var(--text-secondary)" }}>
+                If you believe this item belongs to you, you may submit a claim for review by the Lost & Found Office.
+              </p>
+              <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
+                <Link href={`/item/${item.id}/claim`} className="primary-button">
+                  Claim this Item
+                </Link>
+                <Link href="/" className="secondary-link" aria-hidden>
+                  Back to items
+                </Link>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="detail-action">
+            <Link href="/" className="secondary-link">
+              Back to items
+            </Link>
+          </div>
+        )}
       </section>
     </main>
   );
